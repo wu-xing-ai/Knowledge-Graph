@@ -1,0 +1,82 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+:root {
+  --color-physics: #4A90D9;
+  --color-chemistry: #F5A623;
+  --color-biology: #7ED321;
+  --color-aerospace: #9B59B6;
+  --color-environment: #50E3C2;
+  --color-cross: #6C5CE7;
+  --primary: #409EFF;
+  --bg-main: #f5f7fa;
+  --sidebar-width: 220px;
+}
+
+.el-menu--horizontal {
+  border-bottom: none !important;
+}
+
+.page-container {
+  padding: 20px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  h2 {
+    font-size: 20px;
+    color: #303133;
+  }
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: all 0.3s;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+
+  .icon {
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+
+  .title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 8px;
+  }
+
+  .desc {
+    font-size: 13px;
+    color: #909399;
+    line-height: 1.5;
+  }
+}
