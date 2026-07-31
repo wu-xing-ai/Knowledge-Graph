@@ -5,39 +5,39 @@
 CREATE CONSTRAINT IF NOT EXISTS FOR (k:Knowledge) REQUIRE k.name IS UNIQUE;
 
 // ===== 高中物理知识点 =====
-CREATE (p1:Knowledge {name: '牛顿第二定律', type: '公式', subject: '高中物理', subjectId: 1, difficulty: 3, description: 'F=ma，力等于质量乘以加速度，是经典力学的核心公式', tags: '力学,核心公式', isCross: false, createTime: datetime()})
-CREATE (p2:Knowledge {name: '万有引力定律', type: '公式', subject: '高中物理', subjectId: 1, difficulty: 4, description: 'F=GMm/r²，任意两个物体之间都存在引力', tags: '天体物理,力学', isCross: true, createTime: datetime()})
-CREATE (p3:Knowledge {name: '动能定理', type: '公式', subject: '高中物理', subjectId: 1, difficulty: 3, description: '合外力做的功等于物体动能的变化量', tags: '力学,能量', isCross: true, createTime: datetime()})
-CREATE (p4:Knowledge {name: '热力学第一定律', type: '概念', subject: '高中物理', subjectId: 1, difficulty: 4, description: '能量守恒定律在热现象中的应用：ΔU=Q+W', tags: '热学,能量守恒', isCross: true, createTime: datetime()})
-CREATE (p5:Knowledge {name: '欧姆定律', type: '公式', subject: '高中物理', subjectId: 1, difficulty: 2, description: 'U=IR，电压等于电流乘以电阻', tags: '电学,核心公式', isCross: false, createTime: datetime()})
-CREATE (p6:Knowledge {name: '流体力学基础', type: '概念', subject: '高中物理', subjectId: 1, difficulty: 3, description: '流体的压强、流速与伯努利方程', tags: '流体力学', isCross: true, createTime: datetime()})
+CREATE (p1:Knowledge {name: '牛顿第二定律', type: '公式', subject: '高中物理', subjectId: 1, difficulty: 3, description: 'F=ma，力等于质量乘以加速度，是经典力学的核心公式', tags: '力学,核心公式', isCross: false, createTime: localdatetime()})
+CREATE (p2:Knowledge {name: '万有引力定律', type: '公式', subject: '高中物理', subjectId: 1, difficulty: 4, description: 'F=GMm/r²，任意两个物体之间都存在引力', tags: '天体物理,力学', isCross: true, createTime: localdatetime()})
+CREATE (p3:Knowledge {name: '动能定理', type: '公式', subject: '高中物理', subjectId: 1, difficulty: 3, description: '合外力做的功等于物体动能的变化量', tags: '力学,能量', isCross: true, createTime: localdatetime()})
+CREATE (p4:Knowledge {name: '热力学第一定律', type: '概念', subject: '高中物理', subjectId: 1, difficulty: 4, description: '能量守恒定律在热现象中的应用：ΔU=Q+W', tags: '热学,能量守恒', isCross: true, createTime: localdatetime()})
+CREATE (p5:Knowledge {name: '欧姆定律', type: '公式', subject: '高中物理', subjectId: 1, difficulty: 2, description: 'U=IR，电压等于电流乘以电阻', tags: '电学,核心公式', isCross: false, createTime: localdatetime()})
+CREATE (p6:Knowledge {name: '流体力学基础', type: '概念', subject: '高中物理', subjectId: 1, difficulty: 3, description: '流体的压强、流速与伯努利方程', tags: '流体力学', isCross: true, createTime: localdatetime()})
 
 // ===== 高中化学知识点 =====
-CREATE (c1:Knowledge {name: '化学反应速率', type: '概念', subject: '高中化学', subjectId: 2, difficulty: 3, description: '化学反应进行的快慢程度，受浓度、温度、催化剂等因素影响', tags: '化学动力学', isCross: true, createTime: datetime()})
-CREATE (c2:Knowledge {name: '氧化还原反应', type: '概念', subject: '高中化学', subjectId: 2, difficulty: 3, description: '有电子转移的化学反应，涉及氧化剂和还原剂', tags: '反应类型', isCross: true, createTime: datetime()})
-CREATE (c3:Knowledge {name: '酸碱中和反应', type: '概念', subject: '高中化学', subjectId: 2, difficulty: 2, description: '酸和碱反应生成盐和水', tags: '反应类型,pH', isCross: true, createTime: datetime()})
-CREATE (c4:Knowledge {name: '催化剂原理', type: '概念', subject: '高中化学', subjectId: 2, difficulty: 3, description: '催化剂降低反应活化能，加快反应速率，自身不参与反应', tags: '催化,动力学', isCross: true, createTime: datetime()})
-CREATE (c5:Knowledge {name: '有机化学基础', type: '概念', subject: '高中化学', subjectId: 2, difficulty: 3, description: '含碳化合物的结构、性质和反应', tags: '有机化学', isCross: false, createTime: datetime()})
-CREATE (c6:Knowledge {name: '燃烧反应', type: '概念', subject: '高中化学', subjectId: 2, difficulty: 2, description: '物质与氧气发生的剧烈氧化反应，释放大量热能和光能', tags: '燃烧,能量', isCross: true, createTime: datetime()})
+CREATE (c1:Knowledge {name: '化学反应速率', type: '概念', subject: '高中化学', subjectId: 2, difficulty: 3, description: '化学反应进行的快慢程度，受浓度、温度、催化剂等因素影响', tags: '化学动力学', isCross: true, createTime: localdatetime()})
+CREATE (c2:Knowledge {name: '氧化还原反应', type: '概念', subject: '高中化学', subjectId: 2, difficulty: 3, description: '有电子转移的化学反应，涉及氧化剂和还原剂', tags: '反应类型', isCross: true, createTime: localdatetime()})
+CREATE (c3:Knowledge {name: '酸碱中和反应', type: '概念', subject: '高中化学', subjectId: 2, difficulty: 2, description: '酸和碱反应生成盐和水', tags: '反应类型,pH', isCross: true, createTime: localdatetime()})
+CREATE (c4:Knowledge {name: '催化剂原理', type: '概念', subject: '高中化学', subjectId: 2, difficulty: 3, description: '催化剂降低反应活化能，加快反应速率，自身不参与反应', tags: '催化,动力学', isCross: true, createTime: localdatetime()})
+CREATE (c5:Knowledge {name: '有机化学基础', type: '概念', subject: '高中化学', subjectId: 2, difficulty: 3, description: '含碳化合物的结构、性质和反应', tags: '有机化学', isCross: false, createTime: localdatetime()})
+CREATE (c6:Knowledge {name: '燃烧反应', type: '概念', subject: '高中化学', subjectId: 2, difficulty: 2, description: '物质与氧气发生的剧烈氧化反应，释放大量热能和光能', tags: '燃烧,能量', isCross: true, createTime: localdatetime()})
 
 // ===== 高中生物知识点 =====
-CREATE (b1:Knowledge {name: '酶的特性', type: '概念', subject: '高中生物', subjectId: 3, difficulty: 3, description: '酶是生物催化剂，具有高效性、专一性和多样性', tags: '生物化学,酶', isCross: true, createTime: datetime()})
-CREATE (b2:Knowledge {name: '光合作用', type: '概念', subject: '高中生物', subjectId: 3, difficulty: 4, description: '绿色植物利用光能将CO₂和H₂O转化为有机物并释放O₂', tags: '代谢,能量转换', isCross: true, createTime: datetime()})
-CREATE (b3:Knowledge {name: '细胞呼吸', type: '概念', subject: '高中生物', subjectId: 3, difficulty: 3, description: '细胞分解有机物释放能量的过程，有氧呼吸和无氧呼吸', tags: '代谢,能量', isCross: true, createTime: datetime()})
-CREATE (b4:Knowledge {name: '微生物降解', type: '概念', subject: '高中生物', subjectId: 3, difficulty: 3, description: '微生物分解有机污染物的过程，广泛应用于环境治理', tags: '微生物,环境', isCross: true, createTime: datetime()})
-CREATE (b5:Knowledge {name: '生态系统', type: '概念', subject: '高中生物', subjectId: 3, difficulty: 3, description: '生物群落与无机环境构成的统一整体', tags: '生态,环境', isCross: true, createTime: datetime()})
+CREATE (b1:Knowledge {name: '酶的特性', type: '概念', subject: '高中生物', subjectId: 3, difficulty: 3, description: '酶是生物催化剂，具有高效性、专一性和多样性', tags: '生物化学,酶', isCross: true, createTime: localdatetime()})
+CREATE (b2:Knowledge {name: '光合作用', type: '概念', subject: '高中生物', subjectId: 3, difficulty: 4, description: '绿色植物利用光能将CO₂和H₂O转化为有机物并释放O₂', tags: '代谢,能量转换', isCross: true, createTime: localdatetime()})
+CREATE (b3:Knowledge {name: '细胞呼吸', type: '概念', subject: '高中生物', subjectId: 3, difficulty: 3, description: '细胞分解有机物释放能量的过程，有氧呼吸和无氧呼吸', tags: '代谢,能量', isCross: true, createTime: localdatetime()})
+CREATE (b4:Knowledge {name: '微生物降解', type: '概念', subject: '高中生物', subjectId: 3, difficulty: 3, description: '微生物分解有机污染物的过程，广泛应用于环境治理', tags: '微生物,环境', isCross: true, createTime: localdatetime()})
+CREATE (b5:Knowledge {name: '生态系统', type: '概念', subject: '高中生物', subjectId: 3, difficulty: 3, description: '生物群落与无机环境构成的统一整体', tags: '生态,环境', isCross: true, createTime: localdatetime()})
 
 // ===== 航天拓展知识点 =====
-CREATE (a1:Knowledge {name: '火箭推进原理', type: '交叉应用案例', subject: '航天拓展', subjectId: 4, difficulty: 4, description: '基于牛顿第三定律，火箭通过高速喷射气体获得反向推力', tags: '火箭,物理力学', isCross: true, createTime: datetime()})
-CREATE (a2:Knowledge {name: '航天燃料化学', type: '交叉应用案例', subject: '航天拓展', subjectId: 4, difficulty: 4, description: '液氢液氧、偏二甲肼等航天燃料的化学反应与能量释放', tags: '燃料,化学反应', isCross: true, createTime: datetime()})
-CREATE (a3:Knowledge {name: '卫星轨道力学', type: '概念', subject: '航天拓展', subjectId: 4, difficulty: 5, description: '卫星绕地球运动的轨道计算，涉及万有引力与圆周运动', tags: '轨道,天体力学', isCross: true, createTime: datetime()})
-CREATE (a4:Knowledge {name: '空间站生命保障', type: '概念', subject: '航天拓展', subjectId: 4, difficulty: 4, description: '空间站中的氧气循环、水循环和废物处理系统', tags: '生命保障,环境控制', isCross: true, createTime: datetime()})
+CREATE (a1:Knowledge {name: '火箭推进原理', type: '交叉应用案例', subject: '航天拓展', subjectId: 4, difficulty: 4, description: '基于牛顿第三定律，火箭通过高速喷射气体获得反向推力', tags: '火箭,物理力学', isCross: true, createTime: localdatetime()})
+CREATE (a2:Knowledge {name: '航天燃料化学', type: '交叉应用案例', subject: '航天拓展', subjectId: 4, difficulty: 4, description: '液氢液氧、偏二甲肼等航天燃料的化学反应与能量释放', tags: '燃料,化学反应', isCross: true, createTime: localdatetime()})
+CREATE (a3:Knowledge {name: '卫星轨道力学', type: '概念', subject: '航天拓展', subjectId: 4, difficulty: 5, description: '卫星绕地球运动的轨道计算，涉及万有引力与圆周运动', tags: '轨道,天体力学', isCross: true, createTime: localdatetime()})
+CREATE (a4:Knowledge {name: '空间站生命保障', type: '概念', subject: '航天拓展', subjectId: 4, difficulty: 4, description: '空间站中的氧气循环、水循环和废物处理系统', tags: '生命保障,环境控制', isCross: true, createTime: localdatetime()})
 
 // ===== 环境科普知识点 =====
-CREATE (e1:Knowledge {name: '水污染类型', type: '概念', subject: '环境科普', subjectId: 5, difficulty: 2, description: '物理污染、化学污染、生物污染的分类与特征', tags: '水污染,分类', isCross: false, createTime: datetime()})
-CREATE (e2:Knowledge {name: '生物净化技术', type: '交叉应用案例', subject: '环境科普', subjectId: 5, difficulty: 3, description: '利用微生物和植物降解水中有机污染物', tags: '净化,生物降解', isCross: true, createTime: datetime()})
-CREATE (e3:Knowledge {name: '化学氧化法', type: '交叉应用案例', subject: '环境科普', subjectId: 5, difficulty: 3, description: '利用氧化剂（如臭氧、氯气）分解水中有机物', tags: '净化,化学氧化', isCross: true, createTime: datetime()})
-CREATE (e4:Knowledge {name: '物理过滤技术', type: '概念', subject: '环境科普', subjectId: 5, difficulty: 2, description: '通过物理方法（沉淀、过滤、吸附）去除水中悬浮物', tags: '净化,物理方法', isCross: true, createTime: datetime()})
+CREATE (e1:Knowledge {name: '水污染类型', type: '概念', subject: '环境科普', subjectId: 5, difficulty: 2, description: '物理污染、化学污染、生物污染的分类与特征', tags: '水污染,分类', isCross: false, createTime: localdatetime()})
+CREATE (e2:Knowledge {name: '生物净化技术', type: '交叉应用案例', subject: '环境科普', subjectId: 5, difficulty: 3, description: '利用微生物和植物降解水中有机污染物', tags: '净化,生物降解', isCross: true, createTime: localdatetime()})
+CREATE (e3:Knowledge {name: '化学氧化法', type: '交叉应用案例', subject: '环境科普', subjectId: 5, difficulty: 3, description: '利用氧化剂（如臭氧、氯气）分解水中有机物', tags: '净化,化学氧化', isCross: true, createTime: localdatetime()})
+CREATE (e4:Knowledge {name: '物理过滤技术', type: '概念', subject: '环境科普', subjectId: 5, difficulty: 2, description: '通过物理方法（沉淀、过滤、吸附）去除水中悬浮物', tags: '净化,物理方法', isCross: true, createTime: localdatetime()})
 
 // ===== 创建知识点间的交叉关系 =====
 // 航天交叉：火箭-物理

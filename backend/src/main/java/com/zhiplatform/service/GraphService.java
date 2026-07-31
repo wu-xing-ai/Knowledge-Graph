@@ -3,83 +3,98 @@ package com.zhiplatform.service;
 import com.zhiplatform.dto.GraphDataDTO;
 import com.zhiplatform.entity.neo4j.KnowledgeNode;
 import com.zhiplatform.entity.mysql.GraphConfig;
-import com.zhiplatform.entity.mysql.Subject;
-import com.zhiplatform.repository.neo4j.GraphDataRepository;
 import com.zhiplatform.repository.neo4j.KnowledgeNodeRepository;
 import com.zhiplatform.repository.mysql.GraphConfigRepository;
-import com.zhiplatform.repository.mysql.SubjectRepository;
+import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class GraphService {
-
     private final KnowledgeNodeRepository knowledgeRepo;
-    private final GraphDataRepository graphDataRepo;
-    private final SubjectRepository subjectRepo;
     private final GraphConfigRepository configRepo;
-
+    private final Neo4jClient neo4jClient;
     private static final Map<String, String> SUBJECT_COLORS = Map.of(
-            "高中物理", "#4A90D9",
-            "高中化学", "#F5A623",
-            "高中生物", "#7ED321",
-            "航天拓展", "#9B59B6",
-            "环境科普", "#50E3C2"
-    );
+            "高中物理", "#4A90D9", "高中化学", "#F5A623", "高中生物", "#7ED321",
+            "航天拓展", "#9B59B6", "环境科普", "#50E3C2");
 
-    public GraphService(KnowledgeNodeRepository knowledgeRepo, GraphDataRepository graphDataRepo,
-                        SubjectRepository subjectRepo, GraphConfigRepository configRepo) {
+    public GraphService(KnowledgeNodeRepository knowledgeRepo,
+                        GraphConfigRepository configRepo,
+                        Neo4jClient neo4jClient) {
         this.knowledgeRepo = knowledgeRepo;
-        this.graphDataRepo = graphDataRepo;
-        this.subjectRepo = subjectRepo;
         this.configRepo = configRepo;
+        this.neo4jClient = neo4jClient;
     }
 
     public GraphDataDTO getGraphData(List<Long> subjectIds, String keyword, int limit) {
         List<Map<String, Object>> rawData;
         if (keyword != null && !keyword.isEmpty()) {
-            rawData = graphDataRepo.searchByKeyword(keyword);
+            rawData = executeGraphQuery(
+                    "MATCH (n:Knowledge) WHERE n.name CONTAINS $keyword OR n.description CONTAINS $keyword " +
+                    "MATCH (n)-[r]-(m:Knowledge) RETURN n, type(r) AS relationType, m LIMIT 20",
+                    Map.of("keyword", keyword));
         } else if (subjectIds != null && !subjectIds.isEmpty()) {
-            rawData = graphDataRepo.getGraphData(subjectIds, limit);
+            rawData = executeGraphQuery(
+                    "MATCH (n:Knowledge)-[r]->(m:Knowledge) WHERE n.subjectId IN $subjectIds " +
+                    "RETURN n, type(r) AS relationType, m LIMIT $limit",
+                    Map.of("subjectIds", subjectIds, "limit", limit));
         } else {
-            rawData = graphDataRepo.getAllGraphData(limit);
+            rawData = executeGraphQuery(
+                    "MATCH (n:Knowledge)-[r]->(m:Knowledge) RETURN n, type(r) AS relationType, m LIMIT $limit",
+                    Map.of("limit", limit));
         }
         return convertToDTO(rawData);
     }
 
     public GraphDataDTO expandNode(Long nodeId) {
-        List<Map<String, Object>> rawData = graphDataRepo.expandNode(nodeId);
+        List<Map<String, Object>> rawData = executeGraphQuery(
+                "MATCH (n:Knowledge)-[r]-(m:Knowledge) WHERE id(n) = $nodeId " +
+                "RETURN n, type(r) AS relationType, m",
+                Map.of("nodeId", nodeId));
         return convertToDTO(rawData);
+    }
+
+    List<Map<String, Object>> executeGraphQuery(String cypher, Map<String, Object> params) {
+        return neo4jClient.query(cypher)
+                .bindAll(params)
+                .fetch()
+                .all()
+                .stream()
+                .map(record -> {
+                    Map<String, Object> row = new HashMap<>();
+                    record.forEach(row::put);
+                    return row;
+                })
+                .toList();
+    }
+
+    private Long extractNodeId(Object nodeObj) {
+        if (nodeObj == null) return null;
+        if (nodeObj instanceof KnowledgeNode) {
+            return ((KnowledgeNode) nodeObj).getId();
+        }
+        if (nodeObj instanceof org.neo4j.driver.types.Node) {
+            return ((org.neo4j.driver.types.Node) nodeObj).id();
+        }
+        return null;
     }
 
     private GraphDataDTO convertToDTO(List<Map<String, Object>> rawData) {
         Set<Long> nodeIds = new LinkedHashSet<>();
         List<GraphDataDTO.EdgeDTO> edges = new ArrayList<>();
-
         for (Map<String, Object> row : rawData) {
-            KnowledgeNode source = (KnowledgeNode) row.get("n");
-            KnowledgeNode target = (KnowledgeNode) row.get("m");
-            if (source == null || target == null) continue;
-
-            nodeIds.add(source.getId());
-            nodeIds.add(target.getId());
-
+            Long sourceId = extractNodeId(row.get("n"));
+            Long targetId = extractNodeId(row.get("m"));
+            if (sourceId == null || targetId == null) continue;
+            nodeIds.add(sourceId);
+            nodeIds.add(targetId);
             GraphDataDTO.EdgeDTO edge = new GraphDataDTO.EdgeDTO();
-            edge.setSource(source.getId());
-            edge.setTarget(target.getId());
-
-            Object r = row.get("r");
-            if (r instanceof org.neo4j.driver.types.Relationship) {
-                org.neo4j.driver.types.Relationship rel = (org.neo4j.driver.types.Relationship) r;
-                edge.setRelationType(rel.type());
-            } else {
-                edge.setRelationType("关联");
-            }
+            edge.setSource(sourceId);
+            edge.setTarget(targetId);
+            edge.setRelationType((String) row.getOrDefault("relationType", "关联"));
             edges.add(edge);
         }
-
         List<GraphDataDTO.NodeDTO> nodes = new ArrayList<>();
         for (Long nid : nodeIds) {
             KnowledgeNode kn = knowledgeRepo.findById(nid).orElse(null);
@@ -98,7 +113,6 @@ public class GraphService {
             dto.setSize(kn.getIsCross() != null && kn.getIsCross() ? 40 : 30);
             nodes.add(dto);
         }
-
         GraphDataDTO result = new GraphDataDTO();
         result.setNodes(nodes);
         result.setEdges(edges);
@@ -106,13 +120,11 @@ public class GraphService {
     }
 
     private String getNodeColor(KnowledgeNode node) {
-        if (node.getIsCross() != null && node.getIsCross()) {
-            return "#6C5CE7";
-        }
-        return SUBJECT_COLORS.getOrDefault(node.getSubject(), "#BDC3C7");
+        if (node.getIsCross() != null && node.getIsCross()) return "#6C5CE7";
+        String subject = node.getSubject();
+        return subject == null ? "#BDC3C7" : SUBJECT_COLORS.getOrDefault(subject, "#BDC3C7");
     }
 
-    // 图谱配置
     public GraphConfig saveConfig(GraphConfig config) {
         return configRepo.save(config);
     }

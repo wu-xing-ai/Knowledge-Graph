@@ -78,9 +78,9 @@ public class KnowledgeController {
     public Result<String> batchImport(@RequestParam("file") MultipartFile file) {
         try {
             int count = knowledgeService.batchImport(file);
-            return Result.success("成功导入 " + count + " 条知识点");
+            return Result.success("成功导入 " + count + " 个知识点");
         } catch (Exception e) {
-            return Result.error("导入失败: " + e.getMessage());
+            return Result.error(500, "导入失败: " + e.getMessage());
         }
     }
 }

@@ -1,16 +1,19 @@
 package com.zhiplatform.config;
 
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.neo4j.Neo4jDataAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.neo4j.Neo4jRepositoriesAutoConfiguration;
-import org.springframework.boot.autoconfigure.neo4j.Neo4jAutoConfiguration;
+import org.neo4j.driver.Driver;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.neo4j.core.transaction.Neo4jTransactionManager;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @Configuration
-@EnableAutoConfiguration(exclude = {
-    Neo4jAutoConfiguration.class,
-    Neo4jDataAutoConfiguration.class,
-    Neo4jRepositoriesAutoConfiguration.class
-})
+@EnableTransactionManagement
 public class Neo4jConfig {
+
+    // Bean 名必须为 "transactionManager"：@EnableNeo4jRepositories 默认按该名字查找事务管理器
+    @Bean
+    public PlatformTransactionManager transactionManager(Driver driver) {
+        return new Neo4jTransactionManager(driver);
+    }
 }

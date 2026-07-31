@@ -7,6 +7,7 @@ import com.zhiplatform.repository.neo4j.KnowledgeNodeRepository;
 import com.zhiplatform.repository.mysql.SubjectRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.util.NumberToTextConverter;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,7 +26,6 @@ public class KnowledgeService {
         this.subjectRepo = subjectRepo;
     }
 
-    // 学科管理
     public List<Subject> getAllSubjects() {
         return subjectRepo.findAll();
     }
@@ -42,7 +42,6 @@ public class KnowledgeService {
         subjectRepo.deleteById(id);
     }
 
-    // 知识点管理
     public KnowledgeNode addKnowledge(KnowledgeNode node) {
         node.setCreateTime(LocalDateTime.now());
         return knowledgeRepo.save(node);
@@ -102,12 +101,24 @@ public class KnowledgeService {
 
     private String getCellString(Cell cell) {
         if (cell == null) return "";
-        cell.setCellType(CellType.STRING);
-        return cell.getStringCellValue().trim();
+        return switch (cell.getCellType()) {
+            case STRING -> cell.getStringCellValue().trim();
+            case NUMERIC -> NumberToTextConverter.toText(cell.getNumericCellValue());
+            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+            case FORMULA -> cell.getCellFormula();
+            default -> "";
+        };
     }
 
     private double getCellNumeric(Cell cell) {
         if (cell == null) return 0;
-        return cell.getNumericCellValue();
+        if (cell.getCellType() == CellType.NUMERIC) {
+            return cell.getNumericCellValue();
+        }
+        try {
+            return Double.parseDouble(getCellString(cell));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 }

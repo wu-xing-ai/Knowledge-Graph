@@ -132,22 +132,22 @@ function getLayoutConfig() {
 
 function formatData(data) {
   const nodes = (data.nodes || []).map(n => ({
+    ...n,
     id: String(n.id),
     label: n.name?.length > 8 ? n.name.substring(0, 8) + '...' : n.name,
     fullLabel: n.name,
     style: {
       fill: n.color || '#4A90D9'
     },
-    size: n.isCross ? [130, 55] : [110, 45],
-    ...n
+    size: n.isCross ? [130, 55] : [110, 45]
   }))
 
   const edges = (data.edges || []).map((e, i) => ({
+    ...e,
     id: `edge-${i}`,
     source: String(e.source),
     target: String(e.target),
-    label: e.relationType || '',
-    ...e
+    label: e.relationType || ''
   }))
 
   return { nodes, edges }

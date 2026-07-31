@@ -6,10 +6,10 @@ import com.zhiplatform.dto.LoginResponse;
 import com.zhiplatform.dto.RegisterRequest;
 import com.zhiplatform.entity.mysql.User;
 import com.zhiplatform.service.UserService;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
@@ -39,8 +39,8 @@ public class UserController {
     }
 
     @GetMapping("/info")
-    public Result<User> getUserInfo(Authentication authentication) {
-        String username = authentication.getName();
+    public Result<User> getUserInfo(Principal principal) {
+        String username = principal.getName();
         User user = userService.getUserByUsername(username);
         if (user != null) {
             user.setPassword(null);
