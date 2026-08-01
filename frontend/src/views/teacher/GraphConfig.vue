@@ -61,12 +61,12 @@ const savedConfigs = ref([])
 const config = reactive({ name: '', layout: 'force' })
 
 const subjectColors = {
-  '高中物理': '#4A90D9',
-  '高中化学': '#F5A623',
-  '高中生物': '#7ED321',
-  '航天拓展': '#9B59B6',
-  '环境科普': '#50E3C2',
-  '交叉知识点': '#6C5CE7'
+  '高中物理': '#2563EB',
+  '高中化学': '#D97706',
+  '高中生物': '#16A34A',
+  '航天拓展': '#7C3AED',
+  '环境科普': '#0D9488',
+  '交叉知识点': '#4F46E5'
 }
 
 async function loadPreview() {

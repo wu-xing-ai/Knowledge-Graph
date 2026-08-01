@@ -2,7 +2,7 @@
   <div class="page-container qa-page">
     <div class="qa-layout">
       <!-- 左侧问答区 -->
-      <div class="chat-panel">
+      <div class="chat-panel glass-panel">
         <div class="panel-header">
           <h3>智能问答</h3>
           <el-radio-group v-model="qaMode" size="small">
@@ -13,7 +13,7 @@
 
         <!-- 预设问句 -->
         <div v-if="messages.length === 0" class="templates">
-          <p style="color:#909399;margin-bottom:12px;">常见跨学科问题：</p>
+          <p style="color:var(--text-secondary);margin-bottom:12px;">常见跨学科问题：</p>
           <el-button v-for="t in templates" :key="t.id" text @click="sendMessage(t.question)" class="template-btn">
             {{ t.question }}
           </el-button>
@@ -27,7 +27,9 @@
             </div>
           </div>
           <div v-if="loading" class="msg assistant">
-            <div class="bubble loading">思考中...</div>
+            <div class="bubble loading">
+              <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+            </div>
           </div>
         </div>
 
@@ -50,7 +52,7 @@
       </div>
 
       <!-- 右侧图谱联动 -->
-      <div class="graph-panel">
+      <div class="graph-panel glass-panel">
         <div class="panel-header">
           <h3>关联知识图谱</h3>
         </div>
@@ -147,12 +149,16 @@ onMounted(async () => {
 .qa-layout {
   display: flex;
   height: calc(100vh - 56px);
+  gap: 0;
+}
+.glass-panel {
+  background: var(--bg-panel);
 }
 .chat-panel {
   width: 50%;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #ebeef5;
+  border-right: 1px solid var(--border);
 }
 .graph-panel {
   width: 50%;
@@ -161,13 +167,13 @@ onMounted(async () => {
 }
 .panel-header {
   padding: 12px 16px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #fff;
+  background: var(--bg-panel);
 
-  h3 { font-size: 16px; }
+  h3 { font-size: 16px; color: var(--text-primary); }
 }
 .templates {
   padding: 20px;
@@ -178,12 +184,14 @@ onMounted(async () => {
   text-align: left;
   justify-content: flex-start;
   margin-bottom: 4px;
+  color: var(--text-secondary);
+  &:hover { color: var(--primary); }
 }
 .messages {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  background: #f5f7fa;
+  background: var(--bg-page);
 }
 .msg {
   margin-bottom: 12px;
@@ -194,7 +202,7 @@ onMounted(async () => {
 .bubble {
   max-width: 80%;
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: 10px;
   font-size: 14px;
   line-height: 1.8;
   .msg-content { word-break: break-word; }
@@ -205,17 +213,32 @@ onMounted(async () => {
   border-bottom-right-radius: 4px;
 }
 .msg.assistant .bubble {
-  background: #fff;
-  color: #303133;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
   border-bottom-left-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 .bubble.loading {
-  color: #909399;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.typing-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: bounce 1.2s ease-in-out infinite;
+  &:nth-child(2) { animation-delay: 0.15s; }
+  &:nth-child(3) { animation-delay: 0.3s; }
+}
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-5px); opacity: 1; }
 }
 .input-area {
   padding: 12px 16px;
-  background: #fff;
-  border-top: 1px solid #ebeef5;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
 }
 </style>

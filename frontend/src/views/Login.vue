@@ -1,13 +1,21 @@
 <template>
   <div class="login-page">
-    <div class="login-card">
-      <div class="header">
-        <el-icon size="40" color="#409EFF"><Connection /></el-icon>
-        <h1>知联汇学</h1>
-        <p>交叉学科知识图谱平台</p>
+    <div class="login-brand">
+      <div class="brand-mark">
+        <el-icon :size="34"><Connection /></el-icon>
+      </div>
+      <h1 class="brand-name">知联汇学</h1>
+      <p class="brand-sub">交叉学科知识图谱平台</p>
+      <p class="brand-tagline">连接学科 · 启发思维 · 探索未来</p>
+    </div>
+
+    <div class="login-card glass-card">
+      <div class="card-head">
+        <span class="title">欢迎回来</span>
+        <span class="subtitle">AI · 知识网络 · 跨学科学习</span>
       </div>
 
-      <el-tabs v-model="activeTab">
+      <el-tabs v-model="activeTab" class="login-tabs">
         <el-tab-pane label="登录" name="login">
           <el-form ref="loginFormRef" :model="loginForm" :rules="loginRules" label-width="0">
             <el-form-item prop="username">
@@ -16,8 +24,8 @@
             <el-form-item prop="password">
               <el-input v-model="loginForm.password" placeholder="请输入密码" prefix-icon="Lock" size="large" type="password" @keyup.enter="handleLogin" />
             </el-form-item>
-            <el-button type="primary" size="large" :loading="loading" @click="handleLogin" style="width:100%">
-              登录
+            <el-button class="submit-btn" type="primary" size="large" :loading="loading" @click="handleLogin" style="width:100%">
+              登 录
             </el-button>
           </el-form>
         </el-tab-pane>
@@ -34,13 +42,13 @@
               <el-input v-model="registerForm.realName" placeholder="请输入姓名" prefix-icon="Postcard" size="large" />
             </el-form-item>
             <el-form-item prop="role">
-              <el-radio-group v-model="registerForm.role" size="large">
+              <el-radio-group v-model="registerForm.role" size="large" class="role-group">
                 <el-radio-button label="STUDENT">学生</el-radio-button>
                 <el-radio-button label="TEACHER">教师</el-radio-button>
               </el-radio-group>
             </el-form-item>
-            <el-button type="primary" size="large" :loading="loading" @click="handleRegister" style="width:100%">
-              注册
+            <el-button class="submit-btn" type="primary" size="large" :loading="loading" @click="handleRegister" style="width:100%">
+              注 册
             </el-button>
           </el-form>
         </el-tab-pane>
@@ -120,30 +128,97 @@ async function handleRegister() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  gap: 90px;
+  background: var(--bg-page);
+  overflow: hidden;
+}
+
+.login-brand {
+  text-align: center;
+  max-width: 340px;
+
+  .brand-mark {
+    width: 84px;
+    height: 84px;
+    margin: 0 auto 18px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1F2329;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(31, 35, 41, 0.15);
+  }
+
+  .brand-name {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    color: var(--text-primary);
+  }
+
+  .brand-sub {
+    margin-top: 10px;
+    font-size: 16px;
+    color: var(--text-secondary);
+    letter-spacing: 2px;
+  }
+
+  .brand-tagline {
+    margin-top: 24px;
+    font-size: 13px;
+    color: var(--text-muted);
+    letter-spacing: 3px;
+  }
 }
 
 .login-card {
   width: 400px;
-  background: #fff;
+  padding: 32px 36px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 40px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
 
-  .header {
-    text-align: center;
-    margin-bottom: 30px;
+.card-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 18px;
 
-    h1 {
-      font-size: 24px;
-      margin-top: 8px;
-      color: #303133;
-    }
-    p {
-      color: #909399;
-      font-size: 14px;
-      margin-top: 4px;
-    }
+  .title { font-size: 20px; font-weight: 600; color: var(--text-primary); }
+  .subtitle { margin-top: 6px; font-size: 12px; color: var(--text-muted); letter-spacing: 2px; }
+}
+
+.login-tabs {
+  :deep(.el-tabs__nav-wrap::after) { background: var(--border); }
+  :deep(.el-tabs__item) {
+    font-size: 15px;
+    color: var(--text-secondary);
+    &:hover { color: var(--text-primary); }
   }
+}
+
+.role-group {
+  display: flex;
+  width: 100%;
+  :deep(.el-radio-button__inner) {
+    background: #FFFFFF;
+    border-color: var(--border-strong);
+    color: var(--text-secondary);
+  }
+  :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+}
+
+.submit-btn {
+  margin-top: 6px;
+  height: 44px;
+  font-size: 16px;
+  letter-spacing: 6px;
+  border-radius: 8px;
 }
 </style>

@@ -1,0 +1,43 @@
+/* =============================================================================
+ * Liquid Glass —— 跟随鼠标透镜的补充样式（配合 liquid-glass-lens.js）
+ * 玻璃分层本身由 liquidGlass.css 提供；这里负责：
+ *   1) 透镜外壳与光标隐藏
+ *   2) 水滴质感 rim：亮边 + 内侧高光 + 外投影 + 玻璃厚度着色
+ *      （深色页面上也保持清晰的水滴立体感）
+ * ========================================================================== */
+
+.lg-mouse-lens {
+  transition: opacity 0.25s ease;
+}
+
+/* 水滴质感：亮化描边 + 内侧高光 + 底部暗角 + 外投影（v1 的立体边，3D 液珠感） */
+.lg-mouse-lens.liquid-glass > .lg-edge {
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  box-shadow:
+    inset 1px 1px 2px rgba(255, 255, 255, 0.5),
+    inset -1px -2px 2px rgba(255, 255, 255, 0.08),
+    0 10px 36px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(255, 255, 255, 0.12);
+}
+
+/* 玻璃厚度着色：暗背景上也有“水滴”体积感 */
+.lg-mouse-lens.liquid-glass > .lg-tint {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03));
+}
+
+/* 玻璃即光标：隐藏原生光标（createLiquidMouseLens 会把它加到 root 上） */
+.lg-lens-on,
+.lg-lens-on * {
+  cursor: none !important;
+}
+
+/* 触屏设备（手机/平板）：不显示鼠标透镜，也不隐藏光标（JS 已跳过，这里是兜底） */
+@media (pointer: coarse), (hover: none) {
+  .lg-mouse-lens { display: none !important; }
+  .lg-lens-on,
+  .lg-lens-on * { cursor: auto !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-mouse-lens { transition: none; }
+}

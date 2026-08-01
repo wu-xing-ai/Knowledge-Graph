@@ -29,7 +29,7 @@
                 <el-button type="danger" text @click="removeFavorite(fav.id)">取消收藏</el-button>
               </div>
             </template>
-            <p style="color:#606266;font-size:13px;">{{ fav.category || '未分类' }}</p>
+            <p style="color:var(--text-secondary);font-size:13px;">{{ fav.category || '未分类' }}</p>
           </el-card>
         </div>
         <el-empty v-else description="暂无收藏" />

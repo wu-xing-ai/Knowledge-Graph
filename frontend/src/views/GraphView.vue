@@ -1,25 +1,25 @@
-<template>
-  <div class="page-container">
+﻿<template>
+  <div class="page-container graph-page">
     <div class="page-header">
       <h2>交叉学科知识图谱</h2>
       <div style="display:flex;gap:8px;">
         <el-button @click="exportPNG">导出PNG</el-button>
-        <el-button @click="exportJSON">导出JSON</el-button>
+        <el-button type="primary" @click="exportJSON">导出JSON</el-button>
       </div>
     </div>
 
     <!-- 筛选面板 -->
-    <el-card shadow="never" style="margin-bottom:16px;">
+    <el-card shadow="never" class="filter-card">
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
         <el-select v-model="filters.subjectIds" multiple collapse-tags placeholder="选择学科" style="width:300px;" @change="fetchData">
           <el-option v-for="s in subjects" :key="s.id" :label="s.name" :value="s.id" />
         </el-select>
         <el-input v-model="filters.keyword" placeholder="搜索知识点" style="width:200px;" clearable @keyup.enter="fetchData" />
-        <el-select v-model="layoutType" placeholder="布局" style="width:120px;">
+        <el-select v-model="layoutType" placeholder="布局" style="width:130px;">
+          <el-option label="层次" value="dagre" />
           <el-option label="力导向" value="force" />
           <el-option label="环形" value="circular" />
           <el-option label="径向" value="radial" />
-          <el-option label="层次" value="dagre" />
         </el-select>
         <el-button type="primary" @click="fetchData">
           <el-icon><Search /></el-icon>筛选
@@ -32,7 +32,8 @@
       :data="graphData"
       :highlight-node-ids="highlightIds"
       :layout="layoutType"
-      height="calc(100vh - 320px)"
+      height="calc(100vh - 260px)"
+      style="min-height: 540px"
       @node-dblclick="onNodeDblclick"
     />
 
@@ -52,7 +53,7 @@ import { ElMessage } from 'element-plus'
 const subjects = ref([])
 const graphData = ref({ nodes: [], edges: [] })
 const highlightIds = ref([])
-const layoutType = ref('force')
+const layoutType = ref('dagre')
 const detailVisible = ref(false)
 const selectedNode = ref(null)
 
@@ -115,3 +116,16 @@ onMounted(async () => {
   fetchData()
 })
 </script>
+
+<style scoped lang="scss">
+.graph-page {
+  position: relative;
+  z-index: 1;
+}
+.filter-card {
+  margin-bottom: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+</style>

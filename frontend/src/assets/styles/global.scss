@@ -1,30 +1,196 @@
+﻿/* ============================================================
+   知联汇学 · 全局样式（Kimi 风格浅色主题）
+   设计关键词：干净克制 / 黑白单色 + 一点蓝 / 轻边框 / 无渐变发光
+   品牌蓝取自 Kimi 官方品牌图标 #1783FF
+   ============================================================ */
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html, body, #app {
-  height: 100%;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
 :root {
-  --color-physics: #4A90D9;
-  --color-chemistry: #F5A623;
-  --color-biology: #7ED321;
-  --color-aerospace: #9B59B6;
-  --color-environment: #50E3C2;
-  --color-cross: #6C5CE7;
-  --primary: #409EFF;
-  --bg-main: #f5f7fa;
+  /* 学科配色（功能色，降饱和适配白底） */
+  --color-physics: #5B9BD5;
+  --color-chemistry: #ED7D31;
+  --color-biology: #70AD47;
+  --color-aerospace: #8859A3;
+  --color-environment: #39B5A8;
+  --color-cross: #6055A5;
+
+  /* 品牌色 */
+  --primary: #1783FF;
+  --primary-hover: #3D96FF;
+  --primary-active: #0E6FE0;
+  --primary-soft: #EAF3FF;
+  --primary-glow: rgba(23, 131, 255, 0.12);
+  /* 兼容旧变量名：实色"渐变"，仅作过渡兜底 */
+  --primary-gradient: linear-gradient(135deg, #1783FF 0%, #1783FF 100%);
+
+  /* 背景 */
+  --bg-page: #F5F6F8;
+  --bg-panel: #FFFFFF;
+  --bg-hover: #F3F4F6;
+  --bg-deep: #F5F6F8;        /* 兼容旧变量名 */
+  --bg-base: #FFFFFF;        /* 兼容旧变量名 */
+  --bg-glass: #FFFFFF;       /* 兼容旧变量名 */
+  --bg-glass-strong: #FFFFFF;/* 兼容旧变量名 */
+
+  /* 边框 */
+  --border: #E5E6EB;
+  --border-strong: #D0D3D6;
+  --border-glass: #E5E6EB;        /* 兼容旧变量名 */
+  --border-glass-light: #D0D3D6;  /* 兼容旧变量名 */
+
+  /* 文字 */
+  --text-primary: #1F2329;
+  --text-secondary: #646A73;
+  --text-muted: #8F959E;
+
+  /* 阴影（仅浮层使用） */
+  --shadow-pop: 0 6px 24px rgba(31, 35, 41, 0.08);
+
   --sidebar-width: 220px;
 }
 
-.el-menu--horizontal {
-  border-bottom: none !important;
+html,
+body,
+#app {
+  height: 100%;
+  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
 }
 
+/* ---------- Element Plus 浅色变量覆盖 ---------- */
+:root {
+  --el-color-primary: #1783FF;
+  --el-color-primary-light-3: #5DA8FF;
+  --el-color-primary-light-5: #8BC1FF;
+  --el-color-primary-light-7: #B8D8FF;
+  --el-color-primary-light-8: #CFE5FF;
+  --el-color-primary-light-9: #E6F2FF;
+  --el-color-primary-dark-2: #1269CC;
+
+  --el-color-success: #16A34A;
+  --el-color-warning: #D97706;
+  --el-color-danger: #DC2626;
+  --el-color-error: #DC2626;
+  --el-color-info: #646A73;
+
+  --el-text-color-primary: #1F2329;
+  --el-text-color-regular: #3C4046;
+  --el-text-color-secondary: #646A73;
+  --el-text-color-placeholder: #8F959E;
+
+  --el-border-color: #D0D3D6;
+  --el-border-color-light: #E5E6EB;
+  --el-border-color-lighter: #EBECEF;
+  --el-border-color-extra-light: #F0F1F3;
+
+  --el-border-radius-base: 6px;
+  --el-box-shadow: 0 6px 24px rgba(31, 35, 41, 0.08);
+  --el-box-shadow-light: 0 4px 16px rgba(31, 35, 41, 0.06);
+  --el-box-shadow-lighter: 0 2px 8px rgba(31, 35, 41, 0.05);
+}
+
+/* ---------- Element Plus 组件细节微调 ---------- */
+.el-button--primary {
+  --el-button-bg-color: var(--primary);
+  --el-button-border-color: var(--primary);
+  --el-button-hover-bg-color: var(--primary-hover);
+  --el-button-hover-border-color: var(--primary-hover);
+  --el-button-active-bg-color: var(--primary-active);
+  --el-button-active-border-color: var(--primary-active);
+  --el-button-text-color: #FFFFFF;
+  --el-button-hover-text-color: #FFFFFF;
+  box-shadow: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.el-button {
+  box-shadow: none;
+}
+
+.el-card {
+  --el-card-bg-color: var(--bg-panel);
+  --el-card-border-color: var(--border);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.el-dialog {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-pop);
+}
+
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  background: #FFFFFF !important;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--border-strong) inset !important;
+  transition: box-shadow 0.15s ease;
+  &:hover { box-shadow: 0 0 0 1px var(--text-muted) inset !important; }
+  &.is-focus {
+    box-shadow: 0 0 0 1px var(--primary) inset, 0 0 0 3px var(--primary-glow) !important;
+  }
+}
+
+.el-table {
+  --el-table-header-bg-color: #F7F8FA;
+  --el-table-header-text-color: #646A73;
+  --el-table-border-color: var(--border);
+  --el-table-row-hover-bg-color: #F7F8FA;
+  border-radius: 8px;
+}
+
+.el-tabs__item {
+  color: var(--text-secondary);
+  &.is-active { color: var(--primary); }
+}
+
+.el-tag {
+  border-radius: 4px;
+}
+
+.el-message-box,
+.el-popper.is-light,
+.el-dropdown-menu {
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-pop);
+  .el-dropdown-menu__item:not(.is-disabled):hover { background: var(--bg-hover); }
+}
+
+/* ---------- 通用工具类 ---------- */
+.glass-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 0.2s ease;
+  &:hover {
+    border-color: var(--border-strong);
+  }
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+  margin: 20px 0 12px;
+}
+
+/* 兼容旧类名：不再使用渐变文字 */
+.text-gradient {
+  color: var(--text-primary);
+}
+
+/* ---------- 页面容器 ---------- */
 .page-container {
   padding: 20px;
   height: 100%;
@@ -39,7 +205,9 @@ html, body, #app {
 
   h2 {
     font-size: 20px;
-    color: #303133;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.5px;
   }
 }
 
@@ -50,33 +218,146 @@ html, body, #app {
 }
 
 .stat-card {
-  background: #fff;
-  border-radius: 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   cursor: pointer;
-  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+  transform: perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--lift, 0px));
+  /* 离开时弹簧回弹，悬停时快速跟随 */
+  transition: border-color 0.2s ease, transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  &:hover, &.lg-hovering {
+    border-color: var(--primary);
+  }
+  &.lg-hovering {
+    --lift: -3px;
+    transition: border-color 0.2s ease, transform 0.12s ease-out;
   }
 
   .icon {
-    font-size: 28px;
+    font-size: 24px;
     margin-bottom: 12px;
   }
 
   .title {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
-    color: #303133;
-    margin-bottom: 8px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
   }
 
   .desc {
     font-size: 13px;
-    color: #909399;
-    line-height: 1.5;
+    color: var(--text-secondary);
+    line-height: 1.6;
   }
+}
+
+/* ---------- 滚动条 ---------- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D0D3D6;
+  border-radius: 8px;
+  &:hover { background: #B4B8BD; }
+}
+
+/* ---------- 其它默认样式清理 ---------- */
+.el-menu--horizontal { border-bottom: none !important; }
+
+/* ---------- 液态玻璃悬停：高光跟随鼠标 ---------- */
+.stat-card,
+.topic-card,
+.glass-card,
+.welcome,
+.side-menu .el-menu-item,
+.el-button--primary {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    /* 镜面高光跟随 --mx/--my（由 utils/liquidHover.js 写入）
+       白色亮核 + 品牌蓝晕，白底上也清晰可见 */
+    background:
+      radial-gradient(
+        70px circle at var(--mx, 50%) var(--my, 50%),
+        rgba(255, 255, 255, 0.35),
+        transparent 60%
+      ),
+      radial-gradient(
+        170px circle at var(--mx, 50%) var(--my, 50%),
+        rgba(23, 131, 255, 0.14),
+        rgba(23, 131, 255, 0.05) 50%,
+        transparent 75%
+      );
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  &.lg-hovering::after {
+    opacity: 1;
+  }
+}
+
+/* 卡片倾斜（--rx/--ry 由 JS 写入，此处定义变换链与弹簧复位） */
+.topic-card {
+  transform: perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--lift, 0px));
+  transition: border-color 0.2s ease, transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  &.lg-hovering {
+    --lift: -3px;
+    transition: border-color 0.2s ease, transform 0.12s ease-out;
+  }
+}
+
+/* 菜单项：蓝晕高光 + 悬停玻璃底加强 */
+.side-menu .el-menu-item::after {
+  background:
+    radial-gradient(
+      60px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(255, 255, 255, 0.6),
+      transparent 60%
+    ),
+    radial-gradient(
+      100px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(23, 131, 255, 0.16),
+      transparent 70%
+    );
+}
+
+/* 主按钮为蓝底，保留纯白高光 */
+.el-button--primary::after {
+  background: radial-gradient(
+    90px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.45),
+    transparent 70%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-card, .topic-card { transform: none; transition: border-color 0.2s ease; }
+  .stat-card::after, .topic-card::after, .glass-card::after,
+  .welcome::after, .side-menu .el-menu-item::after, .el-button--primary::after {
+    display: none;
+  }
+}
+/* ---------- 液态玻璃（Skill 引擎）---------- */
+/* 透镜样式与光标隐藏由 liquidGlass.css / liquid-glass-lens.css 提供（已在 main.js 引入） */
+
+/* 侧栏静态玻璃面板：引擎把内容包进 .lg-content，需保持 flex 纵向布局 */
+.sidebar.liquid-glass > .lg-content {
+  display: flex;
+  flex-direction: column;
 }

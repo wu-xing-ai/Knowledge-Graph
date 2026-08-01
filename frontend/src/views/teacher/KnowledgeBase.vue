@@ -120,11 +120,11 @@ const form = reactive({
 })
 
 const subjectColorMap = {
-  '高中物理': '#4A90D9', '高中化学': '#F5A623', '高中生物': '#7ED321',
-  '航天拓展': '#9B59B6', '环境科普': '#50E3C2'
+  '高中物理': '#2563EB', '高中化学': '#D97706', '高中生物': '#16A34A',
+  '航天拓展': '#7C3AED', '环境科普': '#0D9488'
 }
 function getSubjectColor(name) {
-  return subjectColorMap[name] || '#BDC3C7'
+  return subjectColorMap[name] || '#8F959E'
 }
 
 async function fetchList() {

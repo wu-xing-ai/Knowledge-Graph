@@ -1,11 +1,17 @@
-import { createApp } from 'vue'
+﻿import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
+import './utils/liquidGlass/liquidGlass.css'
+import './utils/liquidGlass/liquid-glass-lens.css'
 import './assets/styles/global.scss'
+import { setupLiquidHover } from './utils/liquidHover'
+
+// 液态玻璃悬停交互（高光跟随鼠标 + 卡片微倾斜）
+setupLiquidHover()
 
 const app = createApp(App)
 

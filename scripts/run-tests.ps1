@@ -1,4 +1,4 @@
-# 一键运行前后端自动化测试
+﻿# 一键运行前后端自动化测试
 # 用法: .\scripts\run-tests.ps1
 
 $ErrorActionPreference = "Stop"

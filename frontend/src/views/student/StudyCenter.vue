@@ -16,7 +16,7 @@
           >
             <el-card shadow="never">
               <span style="font-weight:600;">{{ actionMap[r.actionType] || r.actionType }}</span>
-              <span style="color:#909399;margin-left:8px;">{{ r.targetType || '' }}</span>
+              <span style="color:var(--text-secondary);margin-left:8px;">{{ r.targetType || '' }}</span>
             </el-card>
           </el-timeline-item>
         </el-timeline>

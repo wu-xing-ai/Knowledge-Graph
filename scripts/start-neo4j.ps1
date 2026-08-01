@@ -1,4 +1,4 @@
-$JAVA11 = "C:\Program Files\Eclipse Adoptium\jdk-11.0.32.9-hotspot"
+﻿$JAVA11 = "C:\Program Files\Eclipse Adoptium\jdk-11.0.32.9-hotspot"
 $env:JAVA_HOME = $JAVA11
 
 Write-Host "JAVA_HOME set to JDK 11 ($JAVA11)" -ForegroundColor Green

@@ -101,13 +101,31 @@ public class KnowledgeService {
 
     private String getCellString(Cell cell) {
         if (cell == null) return "";
+        if (cell.getCellType() == CellType.FORMULA) {
+            // 公式单元格：优先读取 Excel 缓存的公式计算结果（与旧实现 setCellType(STRING) 行为一致），
+            // 避免把 "=1+2" 之类的公式文本直接写入知识库。
+            return getCachedFormulaValue(cell);
+        }
         return switch (cell.getCellType()) {
             case STRING -> cell.getStringCellValue().trim();
             case NUMERIC -> NumberToTextConverter.toText(cell.getNumericCellValue());
             case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
-            case FORMULA -> cell.getCellFormula();
             default -> "";
         };
+    }
+
+    private String getCachedFormulaValue(Cell cell) {
+        try {
+            return switch (cell.getCachedFormulaResultType()) {
+                case STRING -> cell.getStringCellValue().trim();
+                case NUMERIC -> NumberToTextConverter.toText(cell.getNumericCellValue());
+                case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+                default -> cell.getCellFormula();
+            };
+        } catch (IllegalStateException e) {
+            // 无缓存值时回退到公式文本
+            return cell.getCellFormula();
+        }
     }
 
     private double getCellNumeric(Cell cell) {

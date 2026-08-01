@@ -84,6 +84,7 @@ class GraphServiceTest {
         KnowledgeNode n1 = new KnowledgeNode();
         n1.setId(10L);
         n1.setName("酶催化");
+        n1.setSubject("高中生物");
         n1.setIsCross(true);
         KnowledgeNode n2 = new KnowledgeNode();
         n2.setId(11L);
@@ -98,7 +99,7 @@ class GraphServiceTest {
         assertEquals(2, dto.getNodes().size());
         GraphDataDTO.NodeDTO crossNode = dto.getNodes().stream()
                 .filter(n -> n.getId().equals(10L)).findFirst().orElseThrow();
-        assertEquals("#6C5CE7", crossNode.getColor());
+        assertEquals("#70AD47", crossNode.getColor());
         assertEquals(40, crossNode.getSize());
     }
 
@@ -114,6 +115,21 @@ class GraphServiceTest {
         when(knowledgeRepo.findById(1L)).thenReturn(Optional.of(node));
 
         GraphDataDTO dto = graphService.getGraphData(null, null, 200);
-        assertEquals("#4A90D9", dto.getNodes().get(0).getColor());
+        assertEquals("#5B9BD5", dto.getNodes().get(0).getColor());
+    }
+
+    @Test
+    void getNodeColor_crossNodeKeepsSubjectColor() {
+        KnowledgeNode node = new KnowledgeNode();
+        node.setId(2L);
+        node.setName("光合作用");
+        node.setSubject("高中生物");
+        node.setIsCross(true);
+
+        mockQueryResult = List.of(Map.of("n", node, "relationType", "关联", "m", node));
+        when(knowledgeRepo.findById(2L)).thenReturn(Optional.of(node));
+
+        GraphDataDTO dto = graphService.getGraphData(null, null, 200);
+        assertEquals("#70AD47", dto.getNodes().get(0).getColor());
     }
 }

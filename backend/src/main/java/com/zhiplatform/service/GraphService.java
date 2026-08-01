@@ -16,8 +16,8 @@ public class GraphService {
     private final GraphConfigRepository configRepo;
     private final Neo4jClient neo4jClient;
     private static final Map<String, String> SUBJECT_COLORS = Map.of(
-            "高中物理", "#4A90D9", "高中化学", "#F5A623", "高中生物", "#7ED321",
-            "航天拓展", "#9B59B6", "环境科普", "#50E3C2");
+            "高中物理", "#5B9BD5", "高中化学", "#ED7D31", "高中生物", "#70AD47",
+            "航天拓展", "#8859A3", "环境科普", "#39B5A8", "水污染治理", "#39B5A8");
 
     public GraphService(KnowledgeNodeRepository knowledgeRepo,
                         GraphConfigRepository configRepo,
@@ -32,16 +32,16 @@ public class GraphService {
         if (keyword != null && !keyword.isEmpty()) {
             rawData = executeGraphQuery(
                     "MATCH (n:Knowledge) WHERE n.name CONTAINS $keyword OR n.description CONTAINS $keyword " +
-                    "MATCH (n)-[r]-(m:Knowledge) RETURN n, type(r) AS relationType, m LIMIT 20",
+                    "MATCH (n)-[r]-(m:Knowledge) RETURN n, coalesce(r.relationType, type(r)) AS relationType, m LIMIT 20",
                     Map.of("keyword", keyword));
         } else if (subjectIds != null && !subjectIds.isEmpty()) {
             rawData = executeGraphQuery(
                     "MATCH (n:Knowledge)-[r]->(m:Knowledge) WHERE n.subjectId IN $subjectIds " +
-                    "RETURN n, type(r) AS relationType, m LIMIT $limit",
+                    "RETURN n, coalesce(r.relationType, type(r)) AS relationType, m LIMIT $limit",
                     Map.of("subjectIds", subjectIds, "limit", limit));
         } else {
             rawData = executeGraphQuery(
-                    "MATCH (n:Knowledge)-[r]->(m:Knowledge) RETURN n, type(r) AS relationType, m LIMIT $limit",
+                    "MATCH (n:Knowledge)-[r]->(m:Knowledge) RETURN n, coalesce(r.relationType, type(r)) AS relationType, m LIMIT $limit",
                     Map.of("limit", limit));
         }
         return convertToDTO(rawData);
@@ -50,7 +50,7 @@ public class GraphService {
     public GraphDataDTO expandNode(Long nodeId) {
         List<Map<String, Object>> rawData = executeGraphQuery(
                 "MATCH (n:Knowledge)-[r]-(m:Knowledge) WHERE id(n) = $nodeId " +
-                "RETURN n, type(r) AS relationType, m",
+                "RETURN n, coalesce(r.relationType, type(r)) AS relationType, m",
                 Map.of("nodeId", nodeId));
         return convertToDTO(rawData);
     }
@@ -120,9 +120,10 @@ public class GraphService {
     }
 
     private String getNodeColor(KnowledgeNode node) {
-        if (node.getIsCross() != null && node.getIsCross()) return "#6C5CE7";
+        // 节点底色按学科区分；跨学科属性不覆盖学科色，
+        // 跨学科节点由前端以紫色描边 + 更大尺寸标识。
         String subject = node.getSubject();
-        return subject == null ? "#BDC3C7" : SUBJECT_COLORS.getOrDefault(subject, "#BDC3C7");
+        return subject == null ? "#8F959E" : SUBJECT_COLORS.getOrDefault(subject, "#8F959E");
     }
 
     public GraphConfig saveConfig(GraphConfig config) {

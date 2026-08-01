@@ -1,4 +1,4 @@
-# 一键启动知联汇学平台所有服务
+﻿# 一键启动知联汇学平台所有服务
 # 需要：MySQL 已启动，Neo4j 已解压到 D:\neo4j-community-4.4.4
 
 $ErrorActionPreference = "Stop"
@@ -81,7 +81,7 @@ $backendJob = Start-Job -ScriptBlock {
     $env:JAVA_HOME = $javaHome
     $env:Path = "$javaHome\bin;$env:Path"
     Set-Location $backendDir
-    java -Dfile.encoding=UTF-8 -jar target/zhi-platform-1.0.0.jar
+    java "-Dfile.encoding=UTF-8" -jar target/zhi-platform-1.0.0.jar
 } -ArgumentList $JAVA17, $backendDir
 
 Write-Host "  后端启动中 (Job ID: $($backendJob.Id))..." -ForegroundColor Gray
@@ -97,7 +97,8 @@ do {
 if ($ready) {
     Write-Host "  [OK] 后端已就绪 (http://localhost:8080)" -ForegroundColor Green
 } else {
-    Write-Host "  [警告] 后端可能尚未就绪，请检查日志" -ForegroundColor Yellow
+    Write-Host "  [警告] 后端可能尚未就绪，最近输出如下：" -ForegroundColor Yellow
+    Receive-Job -Id $backendJob.Id 2>&1 | Select-Object -Last 40 | ForEach-Object { Write-Host "    $_" -ForegroundColor Gray }
 }
 
 # 3. 启动前端
