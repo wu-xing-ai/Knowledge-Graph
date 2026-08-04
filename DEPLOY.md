@@ -178,3 +178,16 @@ sudo systemctl restart zhi-platform
 ```
 
 > 提示：也可以用项目自带的 `scripts/build-deploy.ps1` 在本地生成 `deploy/` 部署包，直接上传服务器，跳过在服务器上构建（服务器只需 JDK17 + MySQL + Neo4j + Nginx）。
+
+## 四、日常维护（无需构建环境）
+
+项目自带 `restart.sh`（仓库根目录），只管理系统服务，不需要 JDK/Maven/Node：
+
+```bash
+sudo bash restart.sh restart    # 重启全部服务（MySQL/Neo4j/Nginx/后端）
+sudo bash restart.sh backend    # 只重启后端（改配置/换包后最快生效）
+sudo bash restart.sh start      # 启动全部
+sudo bash restart.sh stop       # 停止全部
+sudo bash restart.sh status     # 查看各服务状态
+sudo bash restart.sh logs       # 查看后端最近日志
+```
