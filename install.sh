@@ -152,7 +152,7 @@ install_deps
 JAR=""; SCHEMA=""; NEO4J_INIT=""
 if [ "$MODE" = "source" ]; then
   info "构建后端（Maven clean package -DskipTests）..."
-  ( cd "$SRC/backend" && mvn -q clean package -DskipTests )
+  ( cd "$SRC/backend" && mvn clean package -DskipTests -ntp )
   info "构建前端（npm install && npm run build）..."
   ( cd "$SRC/frontend" && npm install --no-audit --no-fund && npm run build )
   JAR="$SRC/backend/target/zhi-platform-1.0.0.jar"
