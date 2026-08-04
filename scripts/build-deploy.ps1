@@ -1,4 +1,4 @@
-# 知联汇学 - 一键打包部署包
+﻿# 知联汇学 - 一键打包部署包
 # 运行：.\scripts\build-deploy.ps1
 # 产物：项目根目录 deploy/ 文件夹（上传到服务器后 bash install.sh）
 
@@ -41,7 +41,7 @@ Get-ChildItem "$out\frontend" -Directory -Recurse -ErrorAction SilentlyContinue 
 
 Copy-Item (Join-Path $PSScriptRoot "deploy-templates\nginx.conf") "$out\nginx\zhi-platform.conf" -Force
 Copy-Item (Join-Path $PSScriptRoot "deploy-templates\zhi-platform.service") "$out\systemd\" -Force
-Copy-Item (Join-Path $PSScriptRoot "deploy-templates\install.sh") "$out\" -Force
+Copy-Item (Join-Path $root "install.sh") "$out\" -Force
 Copy-Item (Join-Path $PSScriptRoot "deploy-templates\env.example") "$out\.env.example" -Force
 
 Write-Host ""

@@ -6,6 +6,29 @@
 GitHub（私有仓库）  --git pull-->  服务器  --构建-->  Nginx(前端) + systemd(后端)
 ```
 
+## 零、一键部署（推荐，Ubuntu 22.04/24.04 / Debian 12）
+
+提供 `install.sh` 一键脚本：自动安装 JDK21、Maven、Node.js、MySQL 8、Neo4j、Nginx，自动建库、生成随机密钥（JWT/数据库/Neo4j）、配置 systemd 服务与 Nginx 反代，全程无需手动干预。
+
+```bash
+# 方式 A：全新服务器（自动 clone 源码并构建）
+sudo bash install.sh
+
+# 方式 B：已 clone 源码（推荐）
+cd ~/zhi-platform-src && sudo bash install.sh
+
+# 方式 C：已上传 deploy 部署包
+cd deploy && sudo bash install.sh
+```
+
+可选：用环境变量覆盖默认值（不设则自动生成随机密码并写入 `/etc/zhi-platform.env`）：
+
+```bash
+sudo MYSQL_PASSWORD=你的密码 NEO4J_PASSWORD=你的密码 \
+     MODELSCOPE_API_KEY=xxx PADDLE_OCR_TOKEN=xxx bash install.sh
+```
+
+> 脚本可重复执行（幂等）：已安装的软件自动跳过、已存在的 `/etc/zhi-platform.env` 沿用、Neo4j 已有数据时不重复初始化。完成后访问 `http://服务器IP/`，管理员 `admin / 123456`（首次登录后请立即修改密码）。
 ## 一、本地推送到 GitHub
 
 ### 1. 创建仓库（公开或私有均可，公开仓库必须在服务器上用环境变量覆盖密钥）
