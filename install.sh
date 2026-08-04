@@ -33,6 +33,21 @@ log()  { echo -e "\033[32m[OK]\033[0m $*"; }
 info() { echo -e "\033[36m[..]\033[0m $*"; }
 warn() { echo -e "\033[33m[!]\033[0m $*"; }
 die()  { echo -e "\033[31m[错误]\033[0m $*" >&2; exit 1; }
+# 安全加载 env 文件：逐行解析，不当作 bash 执行（值里含引号/$/反引号都不会报错）
+load_env_file() {
+  local file="$1" key val
+  [ -f "$file" ] || return 0
+  while IFS='=' read -r key val; do
+    key="${key#"${key%%[![:space:]]*}"}"   # 去掉行首空格
+    [ -n "$key" ] || continue
+    case "$key" in
+      \#*|\;*) continue ;;                  # 跳过注释
+    esac
+    val="${val%\"}"; val="${val#\"}"        # 去掉值首尾的引号
+    val="${val%\'}"; val="${val#\'}"
+    export "$key"="$val"
+  done < <(sed 's/\r$//' "$file")           # 顺带处理 Windows CRLF
+}
 
 # ---------- 1. 权限 / 系统检测 ----------
 [ "$(id -u)" -eq 0 ] || die "请用 root 运行：sudo bash install.sh"
@@ -71,10 +86,7 @@ if [ ! -f "$ENV_FILE" ] && [ -f "./.env" ]; then
 fi
 if [ -f "$ENV_FILE" ]; then
   info "发现 $ENV_FILE，沿用现有配置"
-  _env_tmp="$(mktemp)"   # Windows 上传的 env 可能是 CRLF，先转 LF 再加载
-  sed 's/\r$//' "$ENV_FILE" > "$_env_tmp"
-  . "$_env_tmp"
-  rm -f "$_env_tmp"
+  load_env_file "$ENV_FILE"
   MYSQL_PASSWORD="${SPRING_DATASOURCE_PASSWORD:-$MYSQL_PASSWORD}"
   NEO4J_PASSWORD="${SPRING_NEO4J_AUTHENTICATION_PASSWORD:-$NEO4J_PASSWORD}"
   JWT_SECRET="${JWT_SECRET:-}"
