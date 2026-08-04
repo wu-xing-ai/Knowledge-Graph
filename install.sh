@@ -65,6 +65,7 @@ NEO4J_PASSWORD="${NEO4J_PASSWORD:-}"
 if [ ! -f "$ENV_FILE" ] && [ -f "./.env" ]; then
   info "发现仓库根目录 .env，复制为生产配置 $ENV_FILE（注意：不要将 .env 提交到 Git）"
   cp -f "./.env" "$ENV_FILE"
+  sed -i "s/\r$//" "$ENV_FILE"  # Windows 上传的 .env 可能是 CRLF，转成 LF 防止解析出错
   chmod 600 "$ENV_FILE"
 fi
 if [ -f "$ENV_FILE" ]; then
