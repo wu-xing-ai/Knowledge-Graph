@@ -8,6 +8,7 @@
 
 - [项目简介](#项目简介)
 - [一键部署](#一键部署)
+- [Docker 部署](#docker-部署可选)
 - [技术栈](#技术栈)
 - [项目结构](#项目结构)
 - [环境要求](#环境要求)
@@ -89,6 +90,36 @@ sudo bash install.sh
 - 密钥文件：`/etc/zhi-platform.env`（权限 600；已有该文件或根目录有 `.env` 时自动沿用，不覆盖你的配置）
 - 日常维护：`sudo bash restart.sh restart|status|logs|backend`
 - 手动分步部署：见 [`DEPLOY.md`](DEPLOY.md)
+
+---
+
+## Docker 部署（可选）
+
+> 适合不想在服务器上装 MySQL/Neo4j/JDK 的情况，全部用容器跑。服务器只需安装 Docker。
+
+```bash
+# 安装 Docker（Ubuntu）
+sudo apt install -y docker.io docker-compose-plugin
+sudo systemctl enable --now docker
+
+# 一键构建并启动
+cd ~/zhi-platform-src
+sudo bash scripts/docker-deploy.sh up
+```
+
+常用命令：
+
+```bash
+sudo bash scripts/docker-deploy.sh status    # 查看容器状态
+sudo bash scripts/docker-deploy.sh logs      # 查看后端日志
+sudo bash scripts/docker-deploy.sh restart   # 重建并重启
+sudo bash scripts/docker-deploy.sh down      # 停止（数据卷保留）
+```
+
+- 自动读取仓库根目录 `.env`（`MYSQL_PASSWORD` / `NEO4J_PASSWORD` / `JWT_SECRET` / 云端 key），没有则自动生成随机密码
+- 架构：`nginx(80)` → `backend:8080` → `mysql:3306` + `neo4j:7687`，**对外只暴露 80 端口**，MySQL/Neo4j/后端端口仅本机可访问
+- 数据存在 Docker 数据卷 `mysql-data` / `neo4j-data`，`down` 不会丢数据（`docker compose down -v` 才会清空）
+- 首次 `up` 会在容器内构建（Maven/npm），较慢；之后秒级启动
 
 ---
 

@@ -191,3 +191,24 @@ sudo bash restart.sh stop       # 停止全部
 sudo bash restart.sh status     # 查看各服务状态
 sudo bash restart.sh logs       # 查看后端最近日志
 ```
+
+## 五、Docker 部署（可选）
+
+不想在服务器装 MySQL/Neo4j/JDK？全部用容器跑，服务器只需 Docker：
+
+```bash
+# 1. 安装 Docker（Ubuntu）
+sudo apt install -y docker.io docker-compose-plugin
+sudo systemctl enable --now docker
+
+# 2. 一键构建并启动
+cd ~/zhi-platform-src
+sudo bash scripts/docker-deploy.sh up
+
+# 常用
+sudo bash scripts/docker-deploy.sh status|logs|restart|down
+```
+
+- 自动读取根目录 `.env`，没有则生成随机密码；对外只暴露 80 端口
+- 数据在 Docker 数据卷 `mysql-data` / `neo4j-data`，`down` 不丢数据
+- 详细说明见 README「Docker 部署」章节
