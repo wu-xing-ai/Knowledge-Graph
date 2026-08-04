@@ -1,4 +1,4 @@
-# 部署指南（GitHub + 服务器）
+﻿# 部署指南（GitHub + 服务器）
 
 本平台前端是 Vue 静态文件、后端是 Spring Boot jar。推荐部署方式：
 
@@ -8,13 +8,13 @@ GitHub（私有仓库）  --git pull-->  服务器  --构建-->  Nginx(前端) +
 
 ## 一、本地推送到 GitHub
 
-### 1. 创建私有仓库
+### 1. 创建仓库（公开或私有均可，公开仓库必须在服务器上用环境变量覆盖密钥）
 在 GitHub 新建一个 **Private** 仓库（不要 Public），例如 `zhi-platform`。
 
 ### 2. 关联并推送
 ```bash
 # 在项目根目录执行
-git remote add origin https://github.com/<你的用户名>/zhi-platform.git
+git remote add origin https://github.com/wu-xing-ai/Knowledge-Graph.git
 git add -A
 git commit -m "init: 知联汇学知识图谱平台"
 git push -u origin main
@@ -23,6 +23,7 @@ git push -u origin main
 > 仓库已保证不包含敏感信息：
 > - `.env`（真实 API Key）、`deploy/`、`frontend/dist/`、`backend/target/`、`node_modules/` 均被 `.gitignore` 忽略
 > - `application.yml` 中的数据库/Neo4j/JWT 密钥已改为**环境变量优先 + 本地默认值**，生产环境用服务器的 `/etc/zhi-platform.env` 覆盖
+> - ⚠️ 仓库如果是公开的：`application.yml` 里的默认密钥（JWT/数据库/Neo4j）已公开在 GitHub，生产环境**必须**在 `/etc/zhi-platform.env` 覆盖（尤其 `JWT_SECRET`），否则有 token 伪造风险
 
 ### 3.（可选）CI 自动测试
 仓库已带 `.github/workflows/ci.yml`，推送到 `main` 会自动跑前后端测试。
@@ -41,7 +42,7 @@ git push -u origin main
 
 ### 2. 拉取代码并构建
 ```bash
-git clone https://github.com/<你的用户名>/zhi-platform.git /opt/zhi-platform-src
+git clone https://github.com/wu-xing-ai/Knowledge-Graph.git /opt/zhi-platform-src
 cd /opt/zhi-platform-src
 
 # 后端
