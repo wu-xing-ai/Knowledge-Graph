@@ -22,8 +22,8 @@ git push -u origin main
 
 > 仓库已保证不包含敏感信息：
 > - `.env`（真实 API Key）、`deploy/`、`frontend/dist/`、`backend/target/`、`node_modules/` 均被 `.gitignore` 忽略
-> - `application.yml` 中的数据库/Neo4j/JWT 密钥已改为**环境变量优先 + 本地默认值**，生产环境用服务器的 `/etc/zhi-platform.env` 覆盖
-> - ⚠️ 仓库如果是公开的：`application.yml` 里的默认密钥（JWT/数据库/Neo4j）已公开在 GitHub，生产环境**必须**在 `/etc/zhi-platform.env` 覆盖（尤其 `JWT_SECRET`），否则有 token 伪造风险
+> - `application.yml` 中的数据库/Neo4j/JWT 密钥已改为**必须从环境变量读取（默认值为空）**：本地用 `.env`、生产用 `/etc/zhi-platform.env` 提供。`JWT_SECRET` 未设置时登录会报错（故意 fail-fast，防止无密钥运行）
+> - ⚠️ 仓库如果是公开的：虽然代码里已不再包含默认密钥，但 **git 历史里仍有旧默认值**，因此生产环境的数据库/Neo4j 密码请改成与旧值不同的新密码，并设置独立的 `JWT_SECRET`
 
 ### 3.（可选）CI 自动测试
 仓库已带 `.github/workflows/ci.yml`，推送到 `main` 会自动跑前后端测试。
