@@ -67,3 +67,5 @@ class AdminControllerTest {
                 .andExpect(jsonPath("$.data[0].password").isEmpty());
     }
 }
+
+

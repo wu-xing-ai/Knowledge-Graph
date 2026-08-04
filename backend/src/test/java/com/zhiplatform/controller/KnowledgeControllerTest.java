@@ -1,9 +1,15 @@
 package com.zhiplatform.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zhiplatform.dto.DocumentParseDTO;
 import com.zhiplatform.entity.mysql.Subject;
 import com.zhiplatform.entity.neo4j.KnowledgeNode;
+import com.zhiplatform.service.DocumentDraftService;
+import com.zhiplatform.service.DocumentParseService;
+import com.zhiplatform.service.DocumentExtractJobService;
+import com.zhiplatform.service.KnowledgeExtractService;
 import com.zhiplatform.service.KnowledgeService;
+import com.zhiplatform.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,9 +36,21 @@ class KnowledgeControllerTest {
     @Mock
     private KnowledgeService knowledgeService;
 
+    @Mock
+    private DocumentParseService documentParseService;
+
+    @Mock
+    private DocumentExtractJobService documentExtractJobService;
+
+    @Mock
+    private UserService userService;
+
+    @Mock
+    private DocumentDraftService documentDraftService;
+
     @BeforeEach
     void setUp() {
-        KnowledgeController controller = new KnowledgeController(knowledgeService);
+        KnowledgeController controller = new KnowledgeController(knowledgeService, documentParseService, documentExtractJobService, documentDraftService, userService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 
@@ -121,4 +139,27 @@ class KnowledgeControllerTest {
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data[0].name").value("牛顿"));
     }
+
+    @Test
+    void parseDocument_returnsExtractedText() throws Exception {
+        DocumentParseDTO dto = new DocumentParseDTO();
+        dto.setFileName("测试.txt");
+        dto.setSource("本地解析(文本)");
+        dto.setText("光合作用是绿色植物利用光能转化有机物的过程。");
+        dto.setCharCount(25);
+        when(documentParseService.parse(any())).thenReturn(dto);
+
+        mockMvc.perform(multipart("/api/knowledge/document/parse")
+                        .file(new org.springframework.mock.web.MockMultipartFile(
+                                "file", "测试.txt", "text/plain",
+                                "光合作用是绿色植物利用光能转化有机物的过程。".getBytes(java.nio.charset.StandardCharsets.UTF_8))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.fileName").value("测试.txt"))
+                .andExpect(jsonPath("$.data.charCount").value(25));
+    }
 }
+
+
+
+

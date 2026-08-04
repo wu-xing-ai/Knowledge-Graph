@@ -135,4 +135,22 @@ class KnowledgeServiceTest {
         assertEquals(1, result.size());
         assertTrue(result.get(0).getIsCross());
     }
+
+    @Test
+    void createImportTemplate_returnsValidXlsx() throws Exception {
+        byte[] bytes = knowledgeService.createImportTemplate();
+        assertNotNull(bytes);
+        assertTrue(bytes.length > 0);
+
+        try (org.apache.poi.ss.usermodel.Workbook wb =
+                     new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(bytes))) {
+            assertEquals("知识点导入", wb.getSheetName(0));
+            assertEquals("填写说明", wb.getSheetName(1));
+            org.apache.poi.ss.usermodel.Sheet sheet = wb.getSheetAt(0);
+            assertEquals("名称", sheet.getRow(0).getCell(0).getStringCellValue());
+            assertEquals("交叉关系", sheet.getRow(0).getCell(8).getStringCellValue());
+            // 示例行
+            assertEquals("污水处理中的化学沉淀法", sheet.getRow(1).getCell(0).getStringCellValue());
+        }
+    }
 }

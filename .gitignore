@@ -60,3 +60,10 @@ $RECYCLE.BIN/
 # ===== 其他项目特定文件 =====
 # Kimi 会话导出文件
 kimi-export-session_*.md
+
+# ===== 部署包（构建产物）=====
+deploy/
+
+# ===== Office 临时锁文件 =====
+~$*
+

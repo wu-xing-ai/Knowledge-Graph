@@ -1,0 +1,15 @@
+[Unit]
+Description=ZhiPlatform Backend (知联汇学)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/zhi-platform/backend
+ExecStart=/usr/bin/java -Dfile.encoding=UTF-8 -jar /opt/zhi-platform/backend/zhi-platform-1.0.0.jar
+# 生产密钥统一从环境文件读取（不写死在代码/配置里）
+EnvironmentFile=/etc/zhi-platform.env
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

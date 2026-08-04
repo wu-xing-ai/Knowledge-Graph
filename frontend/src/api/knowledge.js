@@ -43,3 +43,45 @@ export function batchImport(file) {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
 }
+
+export function documentExtract(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post('/knowledge/document/extract', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000 // 仅提交任务，很快返回 jobId
+  })
+}
+
+export function getExtractStatus(jobId) {
+  return request.get(`/knowledge/document/extract/status/${jobId}`)
+}
+
+export function documentImport(data) {
+  return request.post('/knowledge/document/import', data, { timeout: 60000 })
+}
+
+export function downloadTemplate() {
+  return request.get('/knowledge/template/download', { responseType: 'blob' })
+}
+
+export function getDocumentImports() {
+  return request.get('/knowledge/document/list')
+}
+
+export function deleteDocumentImport(id) {
+  return request.delete(`/knowledge/document/${id}`)
+}
+
+export function getDocumentDrafts() {
+  return request.get('/knowledge/document/drafts')
+}
+
+export function getDocumentDraft(id) {
+  return request.get(`/knowledge/document/draft/${id}`)
+}
+
+export function deleteDocumentDraft(id) {
+  return request.delete(`/knowledge/document/draft/${id}`)
+}
+

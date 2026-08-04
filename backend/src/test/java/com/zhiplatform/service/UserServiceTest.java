@@ -20,6 +20,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -96,16 +97,34 @@ class UserServiceTest {
     @Test
     void register_duplicateUsername() {
         RegisterRequest request = new RegisterRequest();
-        request.setUsername("admin");
+        request.setUsername("student1");
         request.setPassword("password");
-        request.setRole("TEACHER");
+        request.setRole("STUDENT");
 
-        when(userRepository.existsByUsername("admin")).thenReturn(true);
+        when(userRepository.existsByUsername("student1")).thenReturn(true);
 
         Result<Void> result = userService.register(request);
 
         assertEquals(400, result.getCode());
         verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void register_teacher_createsPendingAccount() {
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername("teacher1");
+        request.setPassword("password");
+        request.setRole("TEACHER");
+
+        when(userRepository.existsByUsername("teacher1")).thenReturn(false);
+        when(passwordEncoder.encode("password")).thenReturn("encoded");
+
+        Result<Void> result = userService.register(request);
+
+        assertEquals(200, result.getCode());
+        assertTrue(result.getMessage().contains("审核"));
+        verify(userRepository).save(argThat(u ->
+                ((User) u).getRole().equals("TEACHER") && ((User) u).getStatus() == 2));
     }
 
     @Test
@@ -133,3 +152,5 @@ class UserServiceTest {
         verify(userRepository).save(user);
     }
 }
+
+

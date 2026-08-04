@@ -28,6 +28,8 @@ public class UserController {
         try {
             LoginResponse response = userService.login(request);
             return Result.success(response);
+        } catch (org.springframework.security.authentication.DisabledException e) {
+            return Result.error(403, "账号待审核或已被禁用");
         } catch (Exception e) {
             return Result.error(401, "用户名或密码错误");
         }
@@ -63,3 +65,4 @@ public class UserController {
         return Result.success();
     }
 }
+

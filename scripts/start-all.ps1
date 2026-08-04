@@ -1,6 +1,7 @@
 ﻿# 一键启动知联汇学平台所有服务
 # 需要：MySQL 已启动，Neo4j 已解压到 D:\neo4j-community-4.4.4
 
+. (Join-Path $PSScriptRoot "load-env.ps1")
 $ErrorActionPreference = "Stop"
 
 Write-Host "========================================" -ForegroundColor Yellow
@@ -68,6 +69,14 @@ if (-not $mvn) {
     exit 1
 }
 
+# 若旧后端仍在运行，jar 文件会被占用导致 mvn clean 失败，先停止旧后端
+$existingBackend = netstat -ano | Select-String ":8080" | Select-String "LISTENING" | Select-Object -First 1
+if ($existingBackend) {
+    $oldPid = ($existingBackend -split '\s+')[-1]
+    Write-Host "  检测到旧后端 (PID $oldPid) 正在运行，先停止以解锁 jar..." -ForegroundColor Yellow
+    Stop-Process -Id $oldPid -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+}
 Write-Host "  编译并打包后端..." -ForegroundColor Gray
 mvn clean package -DskipTests
 if ($LASTEXITCODE -ne 0) {

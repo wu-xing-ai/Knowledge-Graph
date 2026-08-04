@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="sidebar" ref="sidebarEl">
     <div class="logo">
       <div class="logo-mark">
@@ -42,7 +42,11 @@
           <el-icon><Edit /></el-icon>
           <span>习题管理</span>
         </el-menu-item>
-        <el-menu-item index="/teacher/admin">
+      </template>
+
+      <template v-if="isAdmin">
+        <div class="menu-group-label">系统管理</div>
+        <el-menu-item index="/admin/system">
           <el-icon><UserFilled /></el-icon>
           <span>系统管理</span>
         </el-menu-item>
@@ -74,6 +78,7 @@ const userStore = useUserStore()
 
 const activeMenu = computed(() => route.path)
 const isTeacher = computed(() => userStore.isTeacher())
+const isAdmin = computed(() => userStore.isAdmin())
 const isStudent = computed(() => userStore.user?.role === 'STUDENT')
 
 // 侧栏静态液态玻璃面板（Skill 引擎 createLiquidGlass：Snell 折射 + 物理高光 + 色散）

@@ -50,10 +50,10 @@ const routes = [
         meta: { role: 'TEACHER' }
       },
       {
-        path: 'teacher/admin',
+        path: 'admin/system',
         name: 'SystemAdmin',
         component: () => import('@/views/teacher/SystemAdmin.vue'),
-        meta: { role: 'TEACHER' }
+        meta: { role: 'ADMIN' }
       },
       {
         path: 'student/center',
@@ -78,7 +78,12 @@ router.beforeEach((to, from, next) => {
   }
   if (to.meta.role) {
     const user = JSON.parse(localStorage.getItem('user') || '{}')
-    if (user.role !== to.meta.role) {
+    const role = user.role || ''
+    // 管理员可访问所有教师页面；系统管理仅管理员
+    const allowed = to.meta.role === 'ADMIN'
+      ? role === 'ADMIN'
+      : role === to.meta.role || role === 'ADMIN'
+    if (!allowed) {
       next('/dashboard')
       return
     }
@@ -87,3 +92,4 @@ router.beforeEach((to, from, next) => {
 })
 
 export default router
+

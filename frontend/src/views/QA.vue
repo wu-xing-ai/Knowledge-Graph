@@ -9,6 +9,9 @@
             <el-radio-button label="kbqa">KBQA</el-radio-button>
             <el-radio-button label="graphrag">GraphRAG</el-radio-button>
           </el-radio-group>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
+            KBQA：本地知识库快速检索；GraphRAG：AI 大模型增强回答（较慢）。KBQA 检索不到时也会自动用 AI 回答。
+          </div>
         </div>
 
         <!-- 预设问句 -->
@@ -23,6 +26,7 @@
         <div class="messages" ref="messagesRef">
           <div v-for="(msg, i) in messages" :key="i" :class="['msg', msg.role]">
             <div class="bubble">
+              <el-tag v-if="msg.mode === 'graphrag' || msg.mode === 'kbqa_ai'" size="small" type="warning" effect="plain" style="margin-bottom:4px;">AI 回答</el-tag>
               <div v-html="formatMessage(msg.content)" class="msg-content"></div>
             </div>
           </div>
@@ -69,9 +73,12 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { kbqa, graphRag, getTemplates } from '@/api/qa'
+import { saveRecord } from '@/api/exercise'
+import { useUserStore } from '@/store/user'
 import { getGraphData, expandNode } from '@/api/graph'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
 
+const userStore = useUserStore()
 const qaMode = ref('kbqa')
 const input = ref('')
 const loading = ref(false)
@@ -95,8 +102,9 @@ async function sendMessage(text) {
     const res = await api(q)
     if (res.code === 200) {
       const data = res.data
-      messages.value.push({ role: 'assistant', content: data.answer })
+      messages.value.push({ role: 'assistant', content: data.answer, mode: data.mode })
       highlightIds.value = data.relatedNodeIds || []
+      saveQaRecord(q)
 
       // 如果有关联节点，加载图谱
       if (highlightIds.value.length > 0) {
@@ -110,6 +118,17 @@ async function sendMessage(text) {
     scrollBottom()
   }
 }
+
+  // 保存问答历史（不影响主流程）
+  async function saveQaRecord(question) {
+    try {
+      const userId = userStore.user?.userId
+      if (!userId) return
+      await saveRecord({ userId, actionType: 'QA', targetType: qaMode.value, extra: question })
+    } catch (e) {
+      // 历史保存失败不影响问答
+    }
+  }
 
 async function loadRelatedGraph(nodeIds) {
   try {

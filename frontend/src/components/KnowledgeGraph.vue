@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div ref="container" class="knowledge-graph" :style="{ height }">
     <div class="graph-legend">
       <span v-for="s in legendItems" :key="s.label" class="legend-item">
@@ -82,7 +82,8 @@ function initGraph() {
     height,
     fitView: true,
     fitViewPadding: 16,
-    animate: true,
+    // 关闭布局动画：200+ 节点下动画过渡是主要卡顿来源，渲染直接到位
+    animate: false,
     modes: {
       default: ['drag-canvas', 'zoom-canvas', 'drag-node']
     },
@@ -269,7 +270,15 @@ function applyHighlight() {
   })
 }
 
-watch(() => props.data, updateGraph, { deep: true })
+let dataTimer = null
+watch(() => props.data, () => {
+  // 防抖：展开节点等连续变更时合并为一次渲染
+  if (dataTimer) clearTimeout(dataTimer)
+  dataTimer = setTimeout(() => {
+    dataTimer = null
+    updateGraph()
+  }, 200)
+}, { deep: true })
 watch(() => props.highlightNodeIds, applyHighlight, { deep: true })
 watch(() => props.layout, () => {
   if (graph) {
@@ -279,11 +288,16 @@ watch(() => props.layout, () => {
 
 onMounted(() => {
   nextTick(initGraph)
+  let resizeTimer = null
   window.addEventListener('resize', () => {
-    if (graph && container.value) {
-      graph.changeSize(container.value.offsetWidth, container.value.offsetHeight)
-      graph.fitView()
-    }
+    if (resizeTimer) return
+    resizeTimer = setTimeout(() => {
+      resizeTimer = null
+      if (graph && container.value) {
+        graph.changeSize(container.value.offsetWidth, container.value.offsetHeight)
+        graph.fitView()
+      }
+    }, 200)
   })
 })
 

@@ -31,8 +31,14 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function isTeacher() {
-    return user.value?.role === 'TEACHER'
+    // 管理员继承教师功能
+    return user.value?.role === 'TEACHER' || user.value?.role === 'ADMIN'
   }
 
-  return { token, user, setToken, setUser, logout, fetchUserInfo, isTeacher }
+  function isAdmin() {
+    return user.value?.role === 'ADMIN'
+  }
+
+  return { token, user, setToken, setUser, logout, fetchUserInfo, isTeacher, isAdmin }
 })
+

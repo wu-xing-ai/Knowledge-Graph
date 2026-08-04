@@ -33,16 +33,29 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/user/login", "/api/user/register", "/error").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/knowledge/**").hasRole("TEACHER")
-                .requestMatchers(HttpMethod.PUT, "/api/knowledge/**").hasRole("TEACHER")
-                .requestMatchers(HttpMethod.DELETE, "/api/knowledge/**").hasRole("TEACHER")
-                .requestMatchers("/api/graph/config/**").hasRole("TEACHER")
+                // 用户管理：仅管理员
+                .requestMatchers("/api/user/list").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/user/status").hasRole("ADMIN")
+                // 教师功能：教师或管理员
+                .requestMatchers(HttpMethod.POST, "/api/knowledge/**").hasAnyRole("TEACHER", "ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/knowledge/**").hasAnyRole("TEACHER", "ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/knowledge/**").hasAnyRole("TEACHER", "ADMIN")
+                .requestMatchers("/api/graph/config/**").hasAnyRole("TEACHER", "ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/graph/relation/**").hasAnyRole("TEACHER", "ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/graph/relation/**").hasAnyRole("TEACHER", "ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/graph/data").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/graph/expand").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/exercise/**").hasRole("TEACHER")
-                .requestMatchers(HttpMethod.PUT, "/api/exercise/**").hasRole("TEACHER")
-                .requestMatchers(HttpMethod.DELETE, "/api/exercise/**").hasRole("TEACHER")
-                .requestMatchers("/api/admin/**").hasRole("TEACHER")
+                // 学习记录与笔记：登录用户可维护（学生可保存问答记录/笔记）
+                .requestMatchers(HttpMethod.POST, "/api/exercise/record/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/exercise/note/**").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/exercise/note/**").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/exercise/note/**").authenticated()
+                // 习题管理：教师或管理员
+                .requestMatchers(HttpMethod.POST, "/api/exercise/**").hasAnyRole("TEACHER", "ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/exercise/**").hasAnyRole("TEACHER", "ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/exercise/**").hasAnyRole("TEACHER", "ADMIN")
+                // 系统管理：仅管理员
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
@@ -60,3 +73,5 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 }
+
+

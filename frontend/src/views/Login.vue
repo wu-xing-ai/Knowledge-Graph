@@ -46,6 +46,7 @@
                 <el-radio-button label="STUDENT">学生</el-radio-button>
                 <el-radio-button label="TEACHER">教师</el-radio-button>
               </el-radio-group>
+              <div style="width:100%;font-size:12px;color:var(--text-secondary);text-align:center;">教师注册需管理员审核通过后方可登录</div>
             </el-form-item>
             <el-button class="submit-btn" type="primary" size="large" :loading="loading" @click="handleRegister" style="width:100%">
               注 册
@@ -110,8 +111,8 @@ async function handleRegister() {
   await registerFormRef.value.validate()
   loading.value = true
   try {
-    await register(registerForm)
-    ElMessage.success('注册成功，请登录')
+    const regRes = await register(registerForm)
+    ElMessage.success(regRes.message || '注册成功，请登录')
     activeTab.value = 'login'
     loginForm.username = registerForm.username
   } catch (e) {

@@ -8,6 +8,18 @@ export function expandNode(nodeId) {
   return request.get('/graph/expand', { params: { nodeId } })
 }
 
+export function getRelations() {
+  return request.get('/graph/relations')
+}
+
+export function addRelation(data) {
+  return request.post('/graph/relation/add', data)
+}
+
+export function deleteRelation(sourceId, targetId, relationType) {
+  return request.delete('/graph/relation', { params: { sourceId, targetId, relationType } })
+}
+
 export function saveGraphConfig(data) {
   return request.post('/graph/config/save', data)
 }

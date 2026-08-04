@@ -1,6 +1,7 @@
 package com.zhiplatform.service;
 
 import com.zhiplatform.dto.GraphDataDTO;
+import com.zhiplatform.dto.RelationDTO;
 import com.zhiplatform.entity.neo4j.KnowledgeNode;
 import com.zhiplatform.repository.neo4j.KnowledgeNodeRepository;
 import com.zhiplatform.repository.mysql.GraphConfigRepository;
@@ -132,4 +133,89 @@ class GraphServiceTest {
         GraphDataDTO dto = graphService.getGraphData(null, null, 200);
         assertEquals("#70AD47", dto.getNodes().get(0).getColor());
     }
+    @Test
+    void getRelations_returnsRelationList() {
+        mockQueryResult = List.of(Map.of(
+                "sourceId", 1L, "sourceName", "酶的特性",
+                "targetId", 2L, "targetName", "催化剂原理",
+                "relationType", "共通原理", "description", "都降低活化能"));
+
+        List<RelationDTO> relations = graphService.getRelations();
+
+        assertEquals(1, relations.size());
+        RelationDTO r = relations.get(0);
+        assertEquals(1L, r.getSourceId());
+        assertEquals("酶的特性", r.getSourceName());
+        assertEquals(2L, r.getTargetId());
+        assertEquals("催化剂原理", r.getTargetName());
+        assertEquals("共通原理", r.getRelationType());
+        assertEquals("都降低活化能", r.getDescription());
+    }
+
+    @Test
+    void addRelation_valid_returnsTrueAndRunsMerge() {
+        final String[] capturedCypher = new String[1];
+        final Map[] capturedParams = new Map[1];
+        graphService = new GraphService(knowledgeRepo, configRepo, null) {
+            @Override
+            List<Map<String, Object>> executeGraphQuery(String cypher, Map<String, Object> params) {
+                return mockQueryResult;
+            }
+            @Override
+            void executeGraphUpdate(String cypher, Map<String, Object> params) {
+                capturedCypher[0] = cypher;
+                capturedParams[0] = params;
+            }
+        };
+
+        RelationDTO dto = new RelationDTO();
+        dto.setSourceId(1L);
+        dto.setTargetId(2L);
+        dto.setRelationType("交叉应用");
+        dto.setDescription("示例关系");
+
+        boolean ok = graphService.addRelation(dto);
+
+        assertTrue(ok);
+        assertTrue(capturedCypher[0].contains("MERGE"));
+        assertEquals(1L, capturedParams[0].get("sourceId"));
+        assertEquals("交叉应用", capturedParams[0].get("relationType"));
+        assertEquals("示例关系", capturedParams[0].get("description"));
+    }
+
+    @Test
+    void addRelation_invalid_returnsFalse() {
+        RelationDTO dto = new RelationDTO();
+        dto.setSourceId(5L);
+        dto.setTargetId(5L);
+        assertFalse(graphService.addRelation(dto));
+
+        dto.setTargetId(null);
+        assertFalse(graphService.addRelation(dto));
+        assertFalse(graphService.addRelation(null));
+    }
+
+    @Test
+    void deleteRelation_runsDelete() {
+        final String[] capturedCypher = new String[1];
+        graphService = new GraphService(knowledgeRepo, configRepo, null) {
+            @Override
+            List<Map<String, Object>> executeGraphQuery(String cypher, Map<String, Object> params) {
+                return mockQueryResult;
+            }
+            @Override
+            void executeGraphUpdate(String cypher, Map<String, Object> params) {
+                capturedCypher[0] = cypher;
+            }
+        };
+
+        boolean ok = graphService.deleteRelation(1L, 2L, "共通原理");
+
+        assertTrue(ok);
+        assertTrue(capturedCypher[0].contains("DELETE r"));
+        assertTrue(capturedCypher[0].contains("CROSS_RELATE"));
+    }
 }
+
+
+

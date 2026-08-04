@@ -2,6 +2,7 @@ package com.zhiplatform.controller;
 
 import com.zhiplatform.common.Result;
 import com.zhiplatform.dto.GraphDataDTO;
+import com.zhiplatform.dto.RelationDTO;
 import com.zhiplatform.entity.mysql.GraphConfig;
 import com.zhiplatform.service.GraphService;
 import com.zhiplatform.service.UserService;
@@ -33,6 +34,26 @@ public class GraphController {
     @GetMapping("/expand")
     public Result<GraphDataDTO> expandNode(@RequestParam Long nodeId) {
         return Result.success(graphService.expandNode(nodeId));
+    }
+
+    // ==================== 交叉关系管理 ====================
+
+    @GetMapping("/relations")
+    public Result<List<RelationDTO>> getRelations() {
+        return Result.success(graphService.getRelations());
+    }
+
+    @PostMapping("/relation/add")
+    public Result<Boolean> addRelation(@RequestBody RelationDTO dto) {
+        boolean ok = graphService.addRelation(dto);
+        return ok ? Result.success(true) : Result.error(400, "关系参数不合法（源/目标节点不能为空或相同）");
+    }
+
+    @DeleteMapping("/relation")
+    public Result<Boolean> deleteRelation(@RequestParam Long sourceId,
+                                          @RequestParam Long targetId,
+                                          @RequestParam String relationType) {
+        return Result.success(graphService.deleteRelation(sourceId, targetId, relationType));
     }
 
     @PostMapping("/config/save")

@@ -6,7 +6,9 @@ import com.zhiplatform.entity.neo4j.KnowledgeNode;
 import com.zhiplatform.entity.mysql.QaTemplate;
 import com.zhiplatform.repository.neo4j.KnowledgeNodeRepository;
 import com.zhiplatform.repository.mysql.QaTemplateRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -15,6 +17,22 @@ import java.util.regex.Pattern;
 public class QAService {
     private final KnowledgeNodeRepository knowledgeRepo;
     private final QaTemplateRepository templateRepo;
+    private final ModelscopeLlmClient llmClient;
+
+    private static final String RAG_SYSTEM_PROMPT =
+            "你是「知联汇学」交叉学科知识图谱平台的智能问答助手，面向高中师生。\n" +
+            "请基于用户提供的【知识库上下文】回答问题，要求：\n" +
+            "1. 准确、条理清晰、适合高中生理解；\n" +
+            "2. 涉及跨学科问题时，明确说明学科之间的关联（如物理与化学的共通原理）；\n" +
+            "3. 只依据知识库上下文作答，不得编造知识库中没有的事实；如果上下文不足，基于自身知识谨慎作答，不要提及知识库收录情况；\n" +
+            "4. 回答末尾列出引用的知识点名称。";
+
+    private static final Pattern THINK_BLOCK = Pattern.compile("<think>.*?</think>", Pattern.DOTALL);
+    private static final Set<String> STOPWORDS = Set.of(
+            "什么", "如何", "怎么", "为什么", "哪些", "请问", "可以", "一下", "进行", "关于",
+            "以及", "并且", "或者", "但是", "这个", "那个", "这些", "那些", "涉及", "关联",
+            "结合", "分析", "内容", "意思", "区别", "作用", "原理", "解释", "说明", "了解");
+
     private static final Map<String, String> KEYWORD_MAPPING = new LinkedHashMap<>();
     static {
         KEYWORD_MAPPING.put("火箭|航天|卫星|太空|空间站", "航天拓展");
@@ -25,22 +43,60 @@ public class QAService {
     }
 
     public QAService(KnowledgeNodeRepository knowledgeRepo, QaTemplateRepository templateRepo) {
-        this.knowledgeRepo = knowledgeRepo; this.templateRepo = templateRepo;
+        this(knowledgeRepo, templateRepo, null);
+    }
+
+    @Autowired
+    public QAService(KnowledgeNodeRepository knowledgeRepo, QaTemplateRepository templateRepo,
+                     ModelscopeLlmClient llmClient) {
+        this.knowledgeRepo = knowledgeRepo;
+        this.templateRepo = templateRepo;
+        this.llmClient = llmClient;
     }
 
     public QAResponse kbqa(QARequest request) {
         String question = request.getQuestion();
-        List<String> matchedSubjects = identifySubjects(question);
         List<String> keywords = extractKeywords(question);
         List<Long> relatedNodeIds = new ArrayList<>();
         List<String> sources = new ArrayList<>();
-        StringBuilder answer = new StringBuilder();
         Set<KnowledgeNode> allResults = new LinkedHashSet<>();
-        for (String keyword : keywords) allResults.addAll(knowledgeRepo.findByNameContaining(keyword));
-        if (allResults.isEmpty() && !matchedSubjects.isEmpty())
-            for (String subject : matchedSubjects) allResults.addAll(knowledgeRepo.findBySubject(subject));
-        if (allResults.isEmpty())
-            return QAResponse.builder().answer("抱歉，未找到相关知识点。请换个方式提问或浏览知识图谱。").relatedNodeIds(Collections.emptyList()).sources(Collections.emptyList()).mode("kbqa").build();
+
+        // 1) 问题中直接包含的知识点名称（最精准）
+        allResults.addAll(knowledgeRepo.findByNameInQuestion(question));
+        // 2) 关键词在名称中模糊匹配
+        if (allResults.isEmpty()) {
+            for (String keyword : keywords) {
+                allResults.addAll(knowledgeRepo.findByNameContaining(keyword));
+                if (allResults.size() >= 8) break;
+            }
+        }
+        // 3) 关键词在名称/描述/标签中匹配
+        if (allResults.isEmpty()) {
+            for (String keyword : keywords) {
+                allResults.addAll(knowledgeRepo.findByKeywordAnywhere(keyword));
+                if (allResults.size() >= 8) break;
+            }
+        }
+
+        // 仍无匹配 → 自动升级 AI 智能回答
+        if (allResults.isEmpty()) {
+            if (llmClient != null) {
+                try {
+                    String aiAnswer = llmClient.chat(RAG_SYSTEM_PROMPT,
+                            "请直接、完整地回答高中生的这个问题，不要提及知识库收录情况：\n【问题】" + question);
+                    aiAnswer = THINK_BLOCK.matcher(aiAnswer == null ? "" : aiAnswer).replaceAll("").trim();
+                    return QAResponse.builder().answer(aiAnswer)
+                            .relatedNodeIds(Collections.emptyList()).sources(Collections.emptyList())
+                            .mode("kbqa_ai").build();
+                } catch (Exception ignored) {
+                    // 降级
+                }
+            }
+            return QAResponse.builder().answer("抱歉，知识库中未找到相关知识点，且 AI 服务暂不可用。请换个方式提问或浏览知识图谱。")
+                    .relatedNodeIds(Collections.emptyList()).sources(Collections.emptyList()).mode("kbqa").build();
+        }
+
+        StringBuilder answer = new StringBuilder();
         answer.append("根据知识库查询，为您找到以下相关信息：\n\n");
         int count = 0;
         for (KnowledgeNode node : allResults) {
@@ -50,13 +106,68 @@ public class QAService {
             if (node.getDescription() != null && !node.getDescription().isEmpty()) answer.append(node.getDescription()).append("\n");
             answer.append("\n"); count++;
         }
-        if (matchedSubjects.size() > 1) answer.append("\n---\n**跨学科关联提示**：您的问题涉及").append(String.join("、", matchedSubjects)).append("等多个学科领域的知识。");
+        List<String> matchedSubjects = identifySubjects(question);
+        if (matchedSubjects.size() > 1) {
+            answer.append("\n---\n**跨学科关联提示**：您的问题涉及").append(String.join("、", matchedSubjects)).append("等多个学科领域的知识。");
+        }
         return QAResponse.builder().answer(answer.toString()).relatedNodeIds(relatedNodeIds).sources(sources).mode("kbqa").build();
     }
 
+    /**
+     * GraphRAG 增强问答：先在图谱中检索相关知识点作为上下文，再调用魔搭 MiniMax 生成答案。
+     */
     public QAResponse graphRag(QARequest request) {
-        QAResponse kbqaResult = kbqa(request);
-        return QAResponse.builder().answer("【GraphRAG增强回答】\n\n" + kbqaResult.getAnswer() + "\n\n---\n以上答案基于交叉学科知识图谱的深度检索与关联分析生成。").relatedNodeIds(kbqaResult.getRelatedNodeIds()).sources(kbqaResult.getSources()).mode("graphrag").build();
+        if (llmClient == null) {
+            return QAResponse.builder()
+                    .answer("GraphRAG 服务未配置（缺少 MODELSCOPE_API_KEY）。")
+                    .relatedNodeIds(Collections.emptyList()).sources(Collections.emptyList()).mode("graphrag").build();
+        }
+        String question = request.getQuestion();
+        try {
+            List<String> matchedSubjects = identifySubjects(question);
+            List<String> keywords = extractKeywords(question);
+            Set<KnowledgeNode> context = new LinkedHashSet<>();
+            context.addAll(knowledgeRepo.findByNameInQuestion(question));
+            if (context.size() < 12) {
+                for (String keyword : keywords) {
+                    context.addAll(knowledgeRepo.findByNameContaining(keyword));
+                    context.addAll(knowledgeRepo.findByKeywordAnywhere(keyword));
+                    if (context.size() >= 12) break;
+                }
+            }
+            if (context.isEmpty() && !matchedSubjects.isEmpty()) {
+                for (String subject : matchedSubjects) {
+                    context.addAll(knowledgeRepo.findBySubject(subject));
+                    if (context.size() >= 12) break;
+                }
+            }
+
+            List<Long> relatedNodeIds = new ArrayList<>();
+            List<String> sources = new ArrayList<>();
+            StringBuilder kb = new StringBuilder();
+            for (KnowledgeNode node : context) {
+                if (kb.length() > 6000) break;
+                kb.append("- ").append(node.getName()).append(" [").append(node.getSubject()).append("]：")
+                  .append(node.getDescription() == null ? "" : node.getDescription()).append("\n");
+                relatedNodeIds.add(node.getId());
+                sources.add(node.getName());
+            }
+
+            String userPrompt;
+            if (kb.length() > 0) {
+                userPrompt = "【知识库上下文】\n" + kb + "\n【问题】" + question +
+                        "\n请结合知识库上下文回答，并在末尾列出引用的知识点名称。";
+            } else {
+                userPrompt = "请直接、完整地回答高中生的这个问题，不要提及知识库收录情况：\n【问题】" + question;
+            }
+            String answer = llmClient.chat(RAG_SYSTEM_PROMPT, userPrompt);
+            answer = THINK_BLOCK.matcher(answer == null ? "" : answer).replaceAll("").trim();
+            return QAResponse.builder().answer(answer).relatedNodeIds(relatedNodeIds).sources(sources).mode("graphrag").build();
+        } catch (Exception e) {
+            return QAResponse.builder()
+                    .answer("GraphRAG 回答失败：" + e.getMessage() + "\n\n可切换 KBQA 模式尝试。")
+                    .relatedNodeIds(Collections.emptyList()).sources(Collections.emptyList()).mode("graphrag").build();
+        }
     }
 
     public List<QaTemplate> getTemplates() { return templateRepo.findAll(); }
@@ -68,10 +179,25 @@ public class QAService {
             if (question.matches(".*(" + entry.getKey() + ").*")) subjects.add(entry.getValue());
         return subjects;
     }
+
     private List<String> extractKeywords(String question) {
         List<String> keywords = new ArrayList<>();
-        Matcher m = Pattern.compile("[\\u4e00-\\u9fa5]{2,}|[a-zA-Z]{3,}").matcher(question);
-        while (m.find()) { String w = m.group(); if (!Set.of("什么","如何","怎么","为什么","哪些","请问","可以","一下","进行","关于","以及","并且","或者","但是","这个","那个","这些","那些","涉及","关联","结合","分析").contains(w)) keywords.add(w); }
+        // 先按标点/空白切分，再取 2+ 中文字符连续段；长词补 4 字滑动窗口提高召回
+        for (String seg : question.split("[，。！？、；：,.!?;:\\s]+")) {
+            if (seg.isEmpty()) continue;
+            Matcher m = Pattern.compile("[\\u4e00-\\u9fa5]{2,}").matcher(seg);
+            while (m.find()) {
+                String w = m.group();
+                if (!STOPWORDS.contains(w)) keywords.add(w);
+                if (w.length() > 6) {
+                    for (int i = 0; i + 4 <= w.length(); i++) {
+                        String g = w.substring(i, i + 4);
+                        if (!STOPWORDS.contains(g)) keywords.add(g);
+                    }
+                }
+            }
+        }
         return keywords;
     }
 }
+

@@ -16,5 +16,17 @@ export default defineConfig({
     alias: {
       '@': '/src'
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        // 分包：G6 只在图谱页用到，独立 chunk 便于缓存；element-plus/vue 拆分减小首屏主包
+        manualChunks: {
+          'g6': ['@antv/g6'],
+          'element-plus': ['element-plus', '@element-plus/icons-vue'],
+          'vue-vendor': ['vue', 'vue-router', 'pinia', 'axios']
+        }
+      }
+    }
   }
 })
