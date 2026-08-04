@@ -7,6 +7,7 @@
 ## 目录
 
 - [项目简介](#项目简介)
+- [一键部署](#一键部署)
 - [技术栈](#技术栈)
 - [项目结构](#项目结构)
 - [环境要求](#环境要求)
@@ -30,6 +31,57 @@
 - **知识库管理**：教师可管理知识点、学科分类、交叉关系，支持 Excel 批量导入导出
 - **学习辅助**：知识溯源、笔记收藏、习题练习、学习记录
 - **系统管理**：用户管理、权限管控、操作日志
+
+---
+
+## 一键部署（推荐）
+
+> 适用于 **Ubuntu 22.04/24.04、Debian 12**（CentOS/RHEL 部分支持）。一条命令自动完成：安装 JDK21/Maven/Node/MySQL/Neo4j/Nginx → 生成随机密钥 → 建库 → 构建前后端 → 配置 systemd + Nginx → 启动。
+
+```bash
+# 方式 A：全新服务器（自动 clone 源码并构建）
+sudo bash install.sh
+
+# 方式 B：已 clone 源码（推荐）
+cd ~/zhi-platform-src && sudo bash install.sh
+
+# 方式 C：已有 deploy 部署包
+cd deploy && sudo bash install.sh
+```
+
+### 参数示例
+
+所有参数均为可选，**不传则自动生成随机安全密码**并写入 `/etc/zhi-platform.env`：
+
+| 参数 | 作用 | 示例 |
+|------|------|------|
+| `MYSQL_PASSWORD` | MySQL root 密码 | `MYSQL_PASSWORD=wjx1314520` |
+| `NEO4J_PASSWORD` | Neo4j neo4j 密码 | `NEO4J_PASSWORD=MyNeo4j2026!` |
+| `JWT_SECRET` | 登录令牌签名密钥（≥32 字符） | `JWT_SECRET='MyJwtSecret2026ForZhiPlatform!@#'` |
+| `MODELSCOPE_API_KEY` | 魔搭 AI key（问答/文档抽取） | `MODELSCOPE_API_KEY=ms-xxxxxxxx` |
+| `PADDLE_OCR_TOKEN` | PaddleOCR token（扫描件 OCR） | `PADDLE_OCR_TOKEN=xxxxxxxx` |
+| `SERVER_NAME` | Nginx 域名或 IP | `SERVER_NAME=kg.example.com` |
+
+```bash
+# 示例 1：最小部署（自动生成所有随机密码，最省事）
+sudo bash install.sh
+
+# 示例 2：指定数据库密码 + AI 密钥
+sudo MYSQL_PASSWORD=wjx1314520 NEO4J_PASSWORD=MyNeo4j2026 \
+     MODELSCOPE_API_KEY=ms-xxxxxxxx PADDLE_OCR_TOKEN=xxxxxxxx \
+     bash install.sh
+
+# 示例 3：指定 JWT 密钥 + 域名（正式上线推荐）
+sudo JWT_SECRET='MyJwtSecret2026ForZhiPlatform!@#' SERVER_NAME=kg.example.com \
+     bash install.sh
+```
+
+### 部署后
+
+- 访问 `http://服务器IP/`，管理员账号 `admin / 123456`（**首次登录后请立即修改密码**）
+- 密钥文件：`/etc/zhi-platform.env`（权限 600，含自动生成的随机密码）
+- 日常维护：`sudo bash restart.sh restart|status|logs|backend`
+- 手动分步部署：见 [`DEPLOY.md`](DEPLOY.md)
 
 ---
 
@@ -136,11 +188,11 @@
 
 | 软件 | 版本 | 说明 |
 |------|------|------|
-| JDK | 17+ | 推荐 Eclipse Temurin 17 |
+| JDK | 17+（推荐 21） | 后端编译目标 17；Neo4j 2025+/最新版需 21 |
 | Maven | 3.6+ | 构建后端（或使用 `mvnw.cmd`） |
 | Node.js | 18+ | 构建前端 |
 | MySQL | 8.0+ | 关系数据库 |
-| Neo4j | 4.x 社区版 | 图数据库 |
+| Neo4j | 4.x / 5.x 社区版 | 图数据库 |
 
 ---
 
@@ -148,13 +200,13 @@
 
 ### 1. 启动 MySQL
 
-确保 MySQL 服务运行中。默认配置：
+确保 MySQL 服务运行中。默认配置（本地开发）：
 - 地址：`localhost:3306`
 - 用户名：`root`
-- 密码：`wjx1314520`
+- 密码：`wjx1314520`（来自项目根目录 `.env`）
 - 数据库：`zhi_platform`（自动创建）
 
-如需修改请编辑 `backend/src/main/resources/application.yml`。
+> 数据库/Neo4j/JWT 密钥均通过环境变量读取（`application.yml` 不再写死默认值）：本地在项目根目录 `.env` 配置，生产在 `/etc/zhi-platform.env` 配置。
 
 ### 2. 启动 Neo4j
 
@@ -462,7 +514,7 @@ Linux/macOS：
 | 批量导入 | ✅ | ✅ | ❌ |
 
 > 权限控制采用双重校验：前端路由守卫 + 后端 Spring Security 拦截器。
-> 教师注册需管理员在「系统管理」页审核通过后方可登录；管理员可修改用户身份（角色）、重置密码、查看密码哈希。
+> 教师注册需管理员在「系统管理」页审核通过后方可登录；管理员可修改用户身份（角色）、重置密码、启用/禁用、删除账号（不显示密码明文或哈希）。
 
 ---
 
