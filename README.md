@@ -74,12 +74,18 @@ sudo MYSQL_PASSWORD=wjx1314520 NEO4J_PASSWORD=MyNeo4j2026 \
 # 示例 3：指定 JWT 密钥 + 域名（正式上线推荐）
 sudo JWT_SECRET='MyJwtSecret2026ForZhiPlatform!@#' SERVER_NAME=kg.example.com \
      bash install.sh
+
+# 示例 4：直接使用你上传的 .env（脚本自动复制为 /etc/zhi-platform.env，不生成随机密码）
+#   先上传本地 .env 到服务器：scp .env 用户名@服务器IP:~/zhi-platform-src/
+sudo bash install.sh
 ```
+
+> ⚠️ `.env` 含真实密钥（魔搭 key / OCR token 等），**只上传到服务器使用，不要提交到 Git**。它已被 `.gitignore` 排除，切勿用 `git add -f` 强推。
 
 ### 部署后
 
 - 访问 `http://服务器IP/`，管理员账号 `admin / 123456`（**首次登录后请立即修改密码**）
-- 密钥文件：`/etc/zhi-platform.env`（权限 600，含自动生成的随机密码）
+- 密钥文件：`/etc/zhi-platform.env`（权限 600；已有该文件或根目录有 `.env` 时自动沿用，不覆盖你的配置）
 - 日常维护：`sudo bash restart.sh restart|status|logs|backend`
 - 手动分步部署：见 [`DEPLOY.md`](DEPLOY.md)
 

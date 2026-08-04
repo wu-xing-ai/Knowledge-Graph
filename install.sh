@@ -62,6 +62,11 @@ pre_install
 JWT_SECRET="${JWT_SECRET:-}"
 MYSQL_PASSWORD="${MYSQL_PASSWORD:-}"
 NEO4J_PASSWORD="${NEO4J_PASSWORD:-}"
+if [ ! -f "$ENV_FILE" ] && [ -f "./.env" ]; then
+  info "发现仓库根目录 .env，复制为生产配置 $ENV_FILE（注意：不要将 .env 提交到 Git）"
+  cp -f "./.env" "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+fi
 if [ -f "$ENV_FILE" ]; then
   info "发现 $ENV_FILE，沿用现有配置"
   . "$ENV_FILE"

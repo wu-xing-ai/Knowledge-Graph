@@ -28,7 +28,7 @@ sudo MYSQL_PASSWORD=你的密码 NEO4J_PASSWORD=你的密码 \
      MODELSCOPE_API_KEY=xxx PADDLE_OCR_TOKEN=xxx bash install.sh
 ```
 
-> 脚本可重复执行（幂等）：已安装的软件自动跳过、已存在的 `/etc/zhi-platform.env` 沿用、Neo4j 已有数据时不重复初始化。完成后访问 `http://服务器IP/`，管理员 `admin / 123456`（首次登录后请立即修改密码）。
+> 脚本可重复执行（幂等）：已安装的软件自动跳过、已存在的 `/etc/zhi-platform.env` 沿用、Neo4j 已有数据时不重复初始化。也可把本地 `.env` 上传到服务器仓库根目录（`~/zhi-platform-src/.env`），脚本会自动复制为 `/etc/zhi-platform.env` 并沿用（⚠️ `.env` 含真实密钥，不要提交到 Git）。完成后访问 `http://服务器IP/`，管理员 `admin / 123456`（首次登录后请立即修改密码）。
 ## 一、本地推送到 GitHub
 
 ### 1. 创建仓库（公开或私有均可，公开仓库必须在服务器上用环境变量覆盖密钥）
