@@ -32,7 +32,11 @@ CMD="${1:-up}"
 # ---------- 1. 加载配置 ----------
 if [ -f .env ]; then
   info "加载仓库根目录 .env"
-  set -a; . ./.env; set +a
+  # Windows 上传的 .env 可能是 CRLF，先转 LF 再加载，避免 $'\r' 报错
+  _env_tmp="$(mktemp)"
+  sed 's/\r$//' ./.env > "$_env_tmp"
+  set -a; . "$_env_tmp"; set +a
+  rm -f "$_env_tmp"
 fi
 MYSQL_PASSWORD="${MYSQL_PASSWORD:-${SPRING_DATASOURCE_PASSWORD:-}}"
 NEO4J_PASSWORD="${NEO4J_PASSWORD:-${SPRING_NEO4J_AUTHENTICATION_PASSWORD:-}}"

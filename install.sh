@@ -71,7 +71,10 @@ if [ ! -f "$ENV_FILE" ] && [ -f "./.env" ]; then
 fi
 if [ -f "$ENV_FILE" ]; then
   info "发现 $ENV_FILE，沿用现有配置"
-  . "$ENV_FILE"
+  _env_tmp="$(mktemp)"   # Windows 上传的 env 可能是 CRLF，先转 LF 再加载
+  sed 's/\r$//' "$ENV_FILE" > "$_env_tmp"
+  . "$_env_tmp"
+  rm -f "$_env_tmp"
   MYSQL_PASSWORD="${SPRING_DATASOURCE_PASSWORD:-$MYSQL_PASSWORD}"
   NEO4J_PASSWORD="${SPRING_NEO4J_AUTHENTICATION_PASSWORD:-$NEO4J_PASSWORD}"
   JWT_SECRET="${JWT_SECRET:-}"
