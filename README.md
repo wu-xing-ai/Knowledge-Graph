@@ -61,6 +61,7 @@ cd deploy && sudo bash install.sh
 | `MODELSCOPE_API_KEY` | 魔搭 AI key（问答/文档抽取） | `MODELSCOPE_API_KEY=ms-xxxxxxxx` |
 | `PADDLE_OCR_TOKEN` | PaddleOCR token（扫描件 OCR） | `PADDLE_OCR_TOKEN=xxxxxxxx` |
 | `SERVER_NAME` | Nginx 域名或 IP | `SERVER_NAME=kg.example.com` |
+| `CLEAN_BUILD` | 设为 `1` 强制 `mvn clean` 全量构建（默认增量，构建中断后可续跑） | `CLEAN_BUILD=1` |
 
 ```bash
 # 示例 1：最小部署（自动生成所有随机密码，最省事）

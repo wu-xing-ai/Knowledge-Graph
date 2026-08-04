@@ -20,6 +20,7 @@
 #   NEO4J_PASSWORD   Neo4j neo4j 密码
 #   JWT_SECRET       JWT 签名密钥（>=32 字节）
 #   MODELSCOPE_API_KEY / PADDLE_OCR_TOKEN   云端 AI 密钥
+#   CLEAN_BUILD      设为 1 强制 mvn clean 全量构建（默认增量，构建中断后可续跑）
 #   SERVER_NAME      Nginx 域名或 IP（默认自动取服务器 IP）
 # ============================================================================
 set -euo pipefail
@@ -151,8 +152,10 @@ install_deps
 # ---------- 5. 构建 ----------
 JAR=""; SCHEMA=""; NEO4J_INIT=""
 if [ "$MODE" = "source" ]; then
-  info "构建后端（Maven clean package -DskipTests）..."
-  ( cd "$SRC/backend" && mvn clean package -DskipTests -ntp )
+  MVN_CLEAN=""
+  [ "${CLEAN_BUILD:-0}" = "1" ] && MVN_CLEAN="clean"
+  info "构建后端（Maven ${MVN_CLEAN:-增量} package -DskipTests）..."
+  ( cd "$SRC/backend" && mvn $MVN_CLEAN package -DskipTests -ntp )
   info "构建前端（npm install && npm run build）..."
   ( cd "$SRC/frontend" && npm install --no-audit --no-fund && npm run build )
   JAR="$SRC/backend/target/zhi-platform-1.0.0.jar"
