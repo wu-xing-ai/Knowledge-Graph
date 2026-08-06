@@ -50,6 +50,13 @@ public class UserController {
         return Result.success(user);
     }
 
+    @PutMapping("/password")
+    public Result<Void> changePassword(Principal principal, @RequestBody Map<String, Object> params) {
+        String oldPassword = params.get("oldPassword") == null ? "" : params.get("oldPassword").toString();
+        String newPassword = params.get("newPassword") == null ? "" : params.get("newPassword").toString();
+        return userService.changePassword(principal.getName(), oldPassword, newPassword);
+    }
+
     @GetMapping("/list")
     public Result<List<User>> getAllUsers() {
         List<User> users = userService.getAllUsers();

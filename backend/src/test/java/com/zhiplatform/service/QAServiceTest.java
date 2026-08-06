@@ -11,10 +11,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -175,5 +179,74 @@ class QAServiceTest {
         assertEquals("kbqa", response.getMode());
         assertEquals(List.of(7L), response.getRelatedNodeIds());
         assertTrue(response.getAnswer().contains("牛顿第二定律"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void streamGraphRag_pushesMetaDeltaThenDone() throws Exception {
+        ModelscopeLlmClient llmClient = mock(ModelscopeLlmClient.class);
+        KnowledgeNode node = new KnowledgeNode();
+        node.setId(1L);
+        node.setName("酶的特性");
+        node.setSubject("高中生物");
+        node.setDescription("酶是生物催化剂，具有高效性和专一性");
+        when(knowledgeRepo.findByNameContaining(anyString())).thenReturn(List.of(node));
+        doAnswer(inv -> {
+            java.util.function.Consumer<String> onToken = inv.getArgument(2);
+            onToken.accept("酶是");
+            onToken.accept("生物催化剂");
+            return null;
+        }).when(llmClient).chatStream(anyString(), anyString(), any());
+
+        QAService service3 = new QAService(knowledgeRepo, templateRepo, llmClient);
+        QARequest request = new QARequest();
+        request.setQuestion("酶和催化剂有什么关系？");
+
+        List<QAService.QaStreamEvent> events = new ArrayList<>();
+        service3.streamGraphRag(request, events::add);
+
+        assertEquals("meta", events.get(0).name());
+        Map<String, Object> meta = (Map<String, Object>) events.get(0).data();
+        assertEquals(List.of(1L), meta.get("relatedNodeIds"));
+        assertEquals(List.of("酶的特性"), meta.get("sources"));
+        assertTrue(events.stream().anyMatch(e -> "delta".equals(e.name())
+                && "生物催化剂".equals(((Map<String, Object>) e.data()).get("content"))));
+        assertEquals("done", events.get(events.size() - 1).name());
+    }
+
+    @Test
+    void streamGraphRag_withoutLlm_returnsNotConfigured() {
+        QAService service2 = new QAService(knowledgeRepo, templateRepo, null);
+        QARequest request = new QARequest();
+        request.setQuestion("测试问题");
+
+        List<QAService.QaStreamEvent> events = new ArrayList<>();
+        service2.streamGraphRag(request, events::add);
+
+        assertEquals("meta", events.get(0).name());
+        QAService.QaStreamEvent last = events.get(events.size() - 1);
+        assertEquals("done", last.name());
+        assertTrue(events.stream().anyMatch(e -> "delta".equals(e.name())
+                && ((Map<?, ?>) e.data()).get("content").toString().contains("未配置")));
+    }
+
+    @Test
+    void streamGraphRag_llmError_sendsErrorEvent() throws Exception {
+        ModelscopeLlmClient llmClient = mock(ModelscopeLlmClient.class);
+        when(knowledgeRepo.findByNameContaining(anyString())).thenReturn(List.of());
+        doAnswer(inv -> {
+            throw new java.io.IOException("LLM boom");
+        }).when(llmClient).chatStream(anyString(), anyString(), any());
+
+        QAService service3 = new QAService(knowledgeRepo, templateRepo, llmClient);
+        QARequest request = new QARequest();
+        request.setQuestion("测试问题");
+
+        List<QAService.QaStreamEvent> events = new ArrayList<>();
+        service3.streamGraphRag(request, events::add);
+
+        QAService.QaStreamEvent last = events.get(events.size() - 1);
+        assertEquals("error", last.name());
+        assertTrue(((Map<?, ?>) last.data()).get("message").toString().contains("LLM boom"));
     }
 }

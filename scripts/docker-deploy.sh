@@ -11,7 +11,7 @@
 #   sudo bash scripts/docker-deploy.sh status   查看容器状态
 #
 # 配置：自动读取仓库根目录 .env（MYSQL_PASSWORD / NEO4J_PASSWORD / JWT_SECRET /
-#       MODELSCOPE_API_KEY / PADDLE_OCR_TOKEN），没有则自动生成随机密码。
+#       MODELSCOPE_API_KEY / PADDLE_OCR_TOKEN / ADMIN_PASSWORD），没有则自动生成随机密码。
 # ============================================================================
 set -euo pipefail
 
@@ -52,7 +52,8 @@ JWT_SECRET="${JWT_SECRET:-}"
 if [ -z "$MYSQL_PASSWORD" ]; then MYSQL_PASSWORD="$(openssl rand -base64 18 | tr -d '=+/')"; fi
 if [ -z "$NEO4J_PASSWORD" ]; then NEO4J_PASSWORD="$(openssl rand -base64 18 | tr -d '=+/')"; fi
 if [ -z "$JWT_SECRET" ]; then JWT_SECRET="$(openssl rand -base64 48 | tr -d '=+/')"; fi
-export MYSQL_PASSWORD NEO4J_PASSWORD JWT_SECRET MODELSCOPE_API_KEY PADDLE_OCR_TOKEN
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-123456}"
+export MYSQL_PASSWORD NEO4J_PASSWORD JWT_SECRET ADMIN_PASSWORD MODELSCOPE_API_KEY PADDLE_OCR_TOKEN
 
 case "$CMD" in
   down)
@@ -92,11 +93,23 @@ case "$CMD" in
       log "Neo4j 已有数据（$CNT 个节点），跳过初始化"
     fi
 
+    # 按 ADMIN_PASSWORD 初始化管理员密码
+    if command -v htpasswd >/dev/null 2>&1; then
+      ADMIN_HASH=$(htpasswd -bnBC 10 "" "$ADMIN_PASSWORD" | tr -d ':\n')
+      ADMIN_PW_SQL=$(printf '%s' "$ADMIN_PASSWORD" | sed "s/'/''/g")
+      ADMIN_HASH_SQL=$(printf '%s' "$ADMIN_HASH" | sed "s/'/''/g")
+      docker compose exec -T mysql mysql -uroot -p"$MYSQL_PASSWORD" zhi_platform \
+        -e "UPDATE sys_user SET password='$ADMIN_HASH_SQL', role='ADMIN' WHERE username='admin';" \
+        && log "管理员密码已按 ADMIN_PASSWORD 初始化（admin / $ADMIN_PW_SQL）"
+    else
+      warn "未安装 htpasswd（apache2-utils），管理员密码未重置"
+    fi
+
     echo ""
     echo "======================================================"
     echo "  Docker 部署完成！"
     echo "  访问地址 : http://服务器IP/"
-    echo "  管理员   : admin / 123456（首次登录后请立即修改密码）"
+    echo "  管理员   : admin / ${ADMIN_PASSWORD}（首次登录后请立即修改密码）"
     echo "  常用命令 : bash scripts/docker-deploy.sh status|logs|down|restart"
     echo "  数据卷   : docker volume ls（mysql-data / neo4j-data，down 不会删除）"
     echo "======================================================"

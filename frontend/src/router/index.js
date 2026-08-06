@@ -50,6 +50,18 @@ const routes = [
         meta: { role: 'TEACHER' }
       },
       {
+        path: 'teacher/classes',
+        name: 'ClassManage',
+        component: () => import('@/views/teacher/ClassManage.vue'),
+        meta: { role: 'TEACHER' }
+      },
+      {
+        path: 'teacher/tasks',
+        name: 'TaskAssign',
+        component: () => import('@/views/teacher/TaskAssign.vue'),
+        meta: { role: 'TEACHER' }
+      },
+      {
         path: 'admin/system',
         name: 'SystemAdmin',
         component: () => import('@/views/teacher/SystemAdmin.vue'),
@@ -59,6 +71,12 @@ const routes = [
         path: 'student/center',
         name: 'StudyCenter',
         component: () => import('@/views/student/StudyCenter.vue'),
+        meta: { role: 'STUDENT' }
+      },
+      {
+        path: 'student/tasks',
+        name: 'MyTasks',
+        component: () => import('@/views/student/MyTasks.vue'),
         meta: { role: 'STUDENT' }
       }
     ]

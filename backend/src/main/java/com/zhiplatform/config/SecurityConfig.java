@@ -50,10 +50,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/exercise/note/**").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/exercise/note/**").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/api/exercise/note/**").authenticated()
-                // 习题管理：教师或管理员
+// 习题管理：教师或管理员
                 .requestMatchers(HttpMethod.POST, "/api/exercise/**").hasAnyRole("TEACHER", "ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/exercise/**").hasAnyRole("TEACHER", "ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/exercise/**").hasAnyRole("TEACHER", "ADMIN")
+                // 教学组织（班级/小组/布置任务/批改）：教师或管理员；学生任务查看与提交：登录即可
+                .requestMatchers("/api/teaching/manage/**").hasAnyRole("TEACHER", "ADMIN")
+                .requestMatchers("/api/teaching/task/**").authenticated()
                 // 系统管理：仅管理员
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()

@@ -19,3 +19,7 @@ export function getUserList() {
 export function updateUserStatus(userId, status) {
   return request.put('/user/status', { userId, status })
 }
+
+export function changePassword(data) {
+  return request.put('/user/password', data)
+}

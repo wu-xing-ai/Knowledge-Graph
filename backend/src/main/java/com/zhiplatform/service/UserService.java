@@ -94,6 +94,23 @@ public class UserService {
     }
 
     /**
+     * 用户修改自己的密码。
+     */
+    public Result<Void> changePassword(String username, String oldPassword, String newPassword) {
+        if (newPassword == null || newPassword.length() < 6) {
+            return Result.error(400, "新密码至少 6 位");
+        }
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+        if (oldPassword == null || !passwordEncoder.matches(oldPassword, user.getPassword())) {
+            return Result.error(400, "原密码错误");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        return Result.success();
+    }
+
+    /**
      * 管理员重置密码。
      */
     public Result<Void> resetPassword(Long userId, String newPassword) {

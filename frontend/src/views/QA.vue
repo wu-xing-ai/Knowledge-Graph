@@ -25,14 +25,18 @@
         <!-- 消息列表 -->
         <div class="messages" ref="messagesRef">
           <div v-for="(msg, i) in messages" :key="i" :class="['msg', msg.role]">
-            <div class="bubble">
+            <div class="bubble" :class="{ loading: msg.streaming && !msg.content }">
               <el-tag v-if="msg.mode === 'graphrag' || msg.mode === 'kbqa_ai'" size="small" type="warning" effect="plain" style="margin-bottom:4px;">AI 回答</el-tag>
-              <div v-html="formatMessage(msg.content)" class="msg-content"></div>
-            </div>
-          </div>
-          <div v-if="loading" class="msg assistant">
-            <div class="bubble loading">
-              <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+              <!-- 等待首个 token：打字点 + 状态文字（检索/思考中） -->
+              <div v-if="msg.streaming && !msg.content" class="typing-row">
+                <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+                <span class="waiting-text">{{ msg.waitingText || '正在思考…' }}</span>
+              </div>
+              <!-- 开始输出：内容 + 闪烁光标 -->
+              <template v-else>
+                <div v-html="formatMessage(msg.content)" class="msg-content"></div>
+                <span v-if="msg.streaming" class="stream-cursor"></span>
+              </template>
             </div>
           </div>
         </div>
@@ -71,12 +75,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
-import { kbqa, graphRag, getTemplates } from '@/api/qa'
+import { ref, reactive, onMounted, nextTick } from 'vue'
+import { kbqaStream, graphRagStream, getTemplates } from '@/api/qa'
 import { saveRecord } from '@/api/exercise'
 import { useUserStore } from '@/store/user'
 import { getGraphData, expandNode } from '@/api/graph'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
+import { renderMarkdown } from '@/utils/markdown'
 
 const userStore = useUserStore()
 const qaMode = ref('kbqa')
@@ -95,26 +100,62 @@ async function sendMessage(text) {
 
   messages.value.push({ role: 'user', content: q })
   scrollBottom()
+
+  // KBQA 与 GraphRAG 都走 SSE 流式，前端逐字渲染
+  await sendStream(q, qaMode.value)
+}
+
+// 统一流式回答：KBQA（本地检索 / AI 兜底）与 GraphRAG 都逐 token 渲染 + 闪烁光标
+async function sendStream(q, mode) {
   loading.value = true
+  // 必须用 reactive：直接改普通对象属性不会触发 Vue 响应式刷新，界面会“卡住不动”
+  const assistantMsg = reactive({
+    role: 'assistant',
+    content: '',
+    streaming: true,
+    mode: mode,
+    waitingText: mode === 'graphrag' ? 'AI 正在思考…' : '正在检索知识库…'
+  })
+  messages.value.push(assistantMsg)
+  scrollBottom()
 
+  const streamApi = mode === 'graphrag' ? graphRagStream : kbqaStream
   try {
-    const api = qaMode.value === 'graphrag' ? graphRag : kbqa
-    const res = await api(q)
-    if (res.code === 200) {
-      const data = res.data
-      messages.value.push({ role: 'assistant', content: data.answer, mode: data.mode })
-      highlightIds.value = data.relatedNodeIds || []
-      saveQaRecord(q)
-
-      // 如果有关联节点，加载图谱
-      if (highlightIds.value.length > 0) {
-        await loadRelatedGraph(highlightIds.value)
+    streamApi(q, {
+      onMeta: async (meta) => {
+        assistantMsg.content = ''
+        // meta.mode 用于区分 KBQA 是否走了 AI 兜底（kbqa_ai 显示“AI 回答”标签）
+        if (meta.mode) {
+          assistantMsg.mode = meta.mode
+          // 本地检索未命中，后端升级为 AI 回答：把状态文字切到“思考中”
+          if (meta.mode === 'kbqa_ai') {
+            assistantMsg.waitingText = 'AI 正在思考…'
+          }
+        }
+        highlightIds.value = meta.relatedNodeIds || []
+        if (highlightIds.value.length > 0) {
+          await loadRelatedGraph(highlightIds.value)
+        }
+      },
+      onDelta: (content) => {
+        // 首个 token 到达后，气泡内的等待动画自然被内容替换
+        assistantMsg.content += content
+        scrollBottom()
+      },
+      onDone: () => {
+        assistantMsg.streaming = false
+        loading.value = false
+        saveQaRecord(q)
+      },
+      onError: (message) => {
+        assistantMsg.streaming = false
+        loading.value = false
+        if (!assistantMsg.content) {
+          assistantMsg.content = '抱歉，回答出现问题：' + (message || '请稍后重试。')
+        }
       }
-    }
-  } catch (e) {
-    messages.value.push({ role: 'assistant', content: '抱歉，回答出现问题，请稍后重试。' })
+    })
   } finally {
-    loading.value = false
     scrollBottom()
   }
 }
@@ -142,9 +183,8 @@ async function loadRelatedGraph(nodeIds) {
 }
 
 function formatMessage(text) {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n/g, '<br/>')
+  // Markdown（表格/列表/标题等）+ KaTeX 公式（$...$ / $$...$$）渲染
+  return renderMarkdown(text)
 }
 
 function scrollBottom() {
@@ -224,7 +264,48 @@ onMounted(async () => {
   border-radius: 10px;
   font-size: 14px;
   line-height: 1.8;
-  .msg-content { word-break: break-word; }
+  .msg-content {
+    word-break: break-word;
+
+    :deep(p) { margin: 6px 0; }
+    :deep(h1), :deep(h2), :deep(h3), :deep(h4), :deep(h5) { margin: 10px 0 6px; line-height: 1.4; }
+    :deep(ul), :deep(ol) { margin: 6px 0; padding-left: 20px; }
+    :deep(li) { margin: 2px 0; }
+    :deep(hr) { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+    :deep(blockquote) {
+      margin: 6px 0; padding: 4px 12px;
+      border-left: 3px solid var(--primary);
+      color: var(--text-secondary);
+    }
+    :deep(a) { color: var(--primary); }
+    :deep(code) {
+      background: var(--bg-page);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 12px;
+    }
+    :deep(table) {
+      border-collapse: collapse;
+      margin: 8px 0;
+      width: 100%;
+      display: block;
+      overflow-x: auto;
+    }
+    :deep(th), :deep(td) {
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      text-align: left;
+      white-space: nowrap;
+    }
+    :deep(th) { background: var(--bg-page); font-weight: 600; }
+    :deep(.katex-display) {
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 4px 0;
+      margin: 8px 0;
+    }
+  }
 }
 .msg.user .bubble {
   background: var(--primary);
@@ -241,6 +322,29 @@ onMounted(async () => {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+.typing-row {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.waiting-text {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-left: 2px;
+}
+.stream-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 15px;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--primary);
+  animation: cursor-blink 0.9s step-end infinite;
+}
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 .typing-dot {
   width: 7px;

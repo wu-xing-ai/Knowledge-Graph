@@ -42,6 +42,14 @@
           <el-icon><Edit /></el-icon>
           <span>习题管理</span>
         </el-menu-item>
+        <el-menu-item index="/teacher/classes">
+          <el-icon><School /></el-icon>
+          <span>班级小组</span>
+        </el-menu-item>
+        <el-menu-item index="/teacher/tasks">
+          <el-icon><Postcard /></el-icon>
+          <span>布置任务</span>
+        </el-menu-item>
       </template>
 
       <template v-if="isAdmin">
@@ -54,6 +62,10 @@
 
       <template v-if="isStudent">
         <div class="menu-group-label">个人学习</div>
+        <el-menu-item index="/student/tasks">
+          <el-icon><Tickets /></el-icon>
+          <span>我的任务</span>
+        </el-menu-item>
         <el-menu-item index="/student/center">
           <el-icon><User /></el-icon>
           <span>学习中心</span>

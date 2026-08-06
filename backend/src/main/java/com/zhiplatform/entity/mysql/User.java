@@ -26,6 +26,9 @@ public class User {
     @Column(name = "class_name", length = 50)
     private String className;
 
+    @Column(name = "clazz_id")
+    private Long clazzId;
+
     @Column(length = 100)
     private String school;
 
@@ -54,6 +57,8 @@ public class User {
     public void setRealName(String realName) { this.realName = realName; }
     public String getClassName() { return className; }
     public void setClassName(String className) { this.className = className; }
+    public Long getClazzId() { return clazzId; }
+    public void setClazzId(Long clazzId) { this.clazzId = clazzId; }
     public String getSchool() { return school; }
     public void setSchool(String school) { this.school = school; }
     public String getAvatar() { return avatar; }

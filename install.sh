@@ -20,7 +20,8 @@
 #   NEO4J_PASSWORD   Neo4j neo4j 密码
 #   JWT_SECRET       JWT 签名密钥（>=32 字节）
 #   MODELSCOPE_API_KEY / PADDLE_OCR_TOKEN   云端 AI 密钥
-#   CLEAN_BUILD      设为 1 强制 mvn clean 全量构建（默认增量，构建中断后可续跑）
+#   ADMIN_PASSWORD      初始管理员密码（默认 123456）
+#   CLEAN_BUILD         设为 1 强制 mvn clean 全量构建（默认增量，构建中断后可续跑）
 #   SERVER_NAME      Nginx 域名或 IP（默认自动取服务器 IP）
 # ============================================================================
 set -euo pipefail
@@ -97,6 +98,7 @@ else
   cat > "$ENV_FILE" <<EOF
 # ===== 知联汇学生产配置（含自动生成的随机密码，请勿外传/提交仓库）=====
 JWT_SECRET=${JWT_SECRET}
+ADMIN_PASSWORD=${ADMIN_PASSWORD}
 SPRING_DATASOURCE_URL=jdbc:mysql://127.0.0.1:3306/zhi_platform?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
 SPRING_DATASOURCE_USERNAME=root
 SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
@@ -109,6 +111,7 @@ EOF
   chmod 600 "$ENV_FILE"
   info "已生成 $ENV_FILE（JWT/数据库/Neo4j 均为随机密码）"
 fi
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-123456}"
 [ -n "$MYSQL_PASSWORD" ] || die "$ENV_FILE 中 SPRING_DATASOURCE_PASSWORD 为空，请填写后重跑"
 [ -n "$NEO4J_PASSWORD" ] || die "$ENV_FILE 中 SPRING_NEO4J_AUTHENTICATION_PASSWORD 为空，请填写后重跑"
 
@@ -133,7 +136,7 @@ install_deps() {
     export DEBIAN_FRONTEND=noninteractive
     info "安装系统依赖（JDK21 / Maven / Nginx / MySQL / Node / Neo4j）..."
     apt-get update -y
-    apt-get install -y curl wget git unzip vim gnupg ca-certificates openssl sudo openjdk-21-jdk maven nginx mysql-server
+    apt-get install -y curl wget git unzip vim gnupg ca-certificates openssl sudo openjdk-21-jdk maven nginx mysql-server apache2-utils
     if ! command -v node >/dev/null 2>&1; then
       info "安装 Node.js 20（NodeSource）..."
       curl -fsSL https://deb.nodesource.com/setup_20.x | bash - || true
@@ -150,7 +153,7 @@ install_deps() {
     fi
   else
     info "安装 RHEL 系依赖（JDK21 / Maven / Nginx / MariaDB / Node）..."
-    dnf install -y curl wget git unzip vim openssl sudo java-21-openjdk-devel maven nginx mariadb-server
+    dnf install -y curl wget git unzip vim openssl sudo java-21-openjdk-devel maven nginx mariadb-server httpd-tools
     if ! command -v node >/dev/null 2>&1; then
       dnf module enable -y nodejs:20 || true
       dnf install -y nodejs || true
@@ -203,6 +206,16 @@ setup_mysql() {
   fi
   mysql -uroot -p"$MYSQL_PASSWORD" < "$SCHEMA" || die "MySQL 初始化失败：$SCHEMA"
   log "MySQL 初始化完成（zhi_platform 库）"
+  if command -v htpasswd >/dev/null 2>&1; then
+    ADMIN_HASH=$(htpasswd -bnBC 10 "" "$ADMIN_PASSWORD" | tr -d ':\n')
+    ADMIN_PW_SQL=$(printf '%s' "$ADMIN_PASSWORD" | sed "s/'/''/g")
+    ADMIN_HASH_SQL=$(printf '%s' "$ADMIN_HASH" | sed "s/'/''/g")
+    mysql -uroot -p"$MYSQL_PASSWORD" zhi_platform \
+      -e "UPDATE sys_user SET password='$ADMIN_HASH_SQL', role='ADMIN' WHERE username='admin';"
+    log "管理员密码已按 ADMIN_PASSWORD 初始化（admin / $ADMIN_PW_SQL，BCrypt 加密存储）"
+  else
+    warn "未安装 htpasswd（apache2-utils），管理员密码未重置，请使用 schema.sql 中的默认值"
+  fi
 }
 setup_mysql
 
@@ -318,7 +331,7 @@ echo ""
 echo "======================================================"
 echo "  知联汇学部署完成！"
 echo "  访问地址 : http://${SERVER_NAME}/"
-echo "  管理员   : admin / 123456（首次登录后请立即修改密码）"
+echo "  管理员   : admin / ${ADMIN_PASSWORD}（首次登录后请立即修改密码）"
 echo "  配置文件 : $ENV_FILE"
 echo "  应用目录 : $APP_DIR"
 echo "  常用命令 : systemctl restart zhi-platform"

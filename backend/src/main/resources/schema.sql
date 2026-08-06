@@ -118,9 +118,9 @@ INSERT IGNORE INTO `subject` (`name`, `type`, `color`, `description`) VALUES
 ('水污染治理中的生物与化学', 'CROSS', '#39B5A8', '水污染治理中生物与化学的交叉知识'),
 ('环境科学中的物理与生物', 'CROSS', '#5B9BD5', '环境科学中物理与生物的交叉关联');
 
--- 初始管理员账号 (密码: admin123, BCrypt加密)
+-- 初始管理员账号 (密码: 123456, BCrypt加密, 角色 ADMIN；生产部署时 install.sh 会用 ADMIN_PASSWORD 覆盖密码)
 INSERT IGNORE INTO `sys_user` (`username`, `password`, `role`, `real_name`, `status`) VALUES
-('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'TEACHER', '系统管理员', 1);
+('admin', '$2b$10$S.cLg5UZ5NrToeMfrwgeeeUF54TxWdPDnIRDodBoDATji8xGb/WZy', 'ADMIN', '系统管理员', 1);
 
 -- 初始问句模板
 INSERT IGNORE INTO `qa_template` (`question`, `category`, `create_by`) VALUES

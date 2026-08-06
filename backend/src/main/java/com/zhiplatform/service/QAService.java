@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -124,49 +125,188 @@ public class QAService {
         }
         String question = request.getQuestion();
         try {
-            List<String> matchedSubjects = identifySubjects(question);
-            List<String> keywords = extractKeywords(question);
-            Set<KnowledgeNode> context = new LinkedHashSet<>();
-            context.addAll(knowledgeRepo.findByNameInQuestion(question));
-            if (context.size() < 12) {
-                for (String keyword : keywords) {
-                    context.addAll(knowledgeRepo.findByNameContaining(keyword));
-                    context.addAll(knowledgeRepo.findByKeywordAnywhere(keyword));
-                    if (context.size() >= 12) break;
-                }
-            }
-            if (context.isEmpty() && !matchedSubjects.isEmpty()) {
-                for (String subject : matchedSubjects) {
-                    context.addAll(knowledgeRepo.findBySubject(subject));
-                    if (context.size() >= 12) break;
-                }
-            }
-
-            List<Long> relatedNodeIds = new ArrayList<>();
-            List<String> sources = new ArrayList<>();
-            StringBuilder kb = new StringBuilder();
-            for (KnowledgeNode node : context) {
-                if (kb.length() > 6000) break;
-                kb.append("- ").append(node.getName()).append(" [").append(node.getSubject()).append("]：")
-                  .append(node.getDescription() == null ? "" : node.getDescription()).append("\n");
-                relatedNodeIds.add(node.getId());
-                sources.add(node.getName());
-            }
-
-            String userPrompt;
-            if (kb.length() > 0) {
-                userPrompt = "【知识库上下文】\n" + kb + "\n【问题】" + question +
-                        "\n请结合知识库上下文回答，并在末尾列出引用的知识点名称。";
-            } else {
-                userPrompt = "请直接、完整地回答高中生的这个问题，不要提及知识库收录情况：\n【问题】" + question;
-            }
-            String answer = llmClient.chat(RAG_SYSTEM_PROMPT, userPrompt);
+            RagContext ctx = buildContext(question);
+            String answer = llmClient.chat(RAG_SYSTEM_PROMPT, ctx.userPrompt);
             answer = THINK_BLOCK.matcher(answer == null ? "" : answer).replaceAll("").trim();
-            return QAResponse.builder().answer(answer).relatedNodeIds(relatedNodeIds).sources(sources).mode("graphrag").build();
+            return QAResponse.builder().answer(answer).relatedNodeIds(ctx.relatedNodeIds).sources(ctx.sources).mode("graphrag").build();
         } catch (Exception e) {
             return QAResponse.builder()
                     .answer("GraphRAG 回答失败：" + e.getMessage() + "\n\n可切换 KBQA 模式尝试。")
                     .relatedNodeIds(Collections.emptyList()).sources(Collections.emptyList()).mode("graphrag").build();
+        }
+    }
+
+    /**
+     * GraphRAG 流式问答：事件回调依次推送 meta（关联节点）、delta（增量文本）、done / error。
+     */
+    public void streamGraphRag(QARequest request, Consumer<QaStreamEvent> eventSink) {
+        String question = request.getQuestion();
+        try {
+            if (llmClient == null) {
+                eventSink.accept(new QaStreamEvent("meta", metaData(Collections.emptyList(), Collections.emptyList(), "graphrag")));
+                eventSink.accept(new QaStreamEvent("delta", Map.of("content", "GraphRAG 服务未配置（缺少 MODELSCOPE_API_KEY）。")));
+                eventSink.accept(new QaStreamEvent("done", Map.of()));
+                return;
+            }
+            RagContext ctx = buildContext(question);
+            eventSink.accept(new QaStreamEvent("meta", metaData(ctx.relatedNodeIds, ctx.sources, "graphrag")));
+            llmClient.chatStream(RAG_SYSTEM_PROMPT, ctx.userPrompt, token ->
+                    eventSink.accept(new QaStreamEvent("delta", Map.of("content", token))));
+            eventSink.accept(new QaStreamEvent("done", Map.of()));
+        } catch (Exception e) {
+            eventSink.accept(new QaStreamEvent("error", Map.of("message", e.getMessage() == null ? e.toString() : e.getMessage())));
+        }
+    }
+
+    /**
+     * KBQA 流式问答：本地检索命中时逐段流式输出检索结果；未命中时走 AI 流式兜底。
+     * 事件顺序：meta（关联节点 + mode）→ delta* → done / error。
+     */
+    public void streamKbqa(QARequest request, Consumer<QaStreamEvent> eventSink) {
+        String question = request.getQuestion();
+        try {
+            List<String> keywords = extractKeywords(question);
+            List<Long> relatedNodeIds = new ArrayList<>();
+            List<String> sources = new ArrayList<>();
+            Set<KnowledgeNode> allResults = new LinkedHashSet<>();
+
+            // 与 kbqa() 相同的三级检索
+            allResults.addAll(knowledgeRepo.findByNameInQuestion(question));
+            if (allResults.isEmpty()) {
+                for (String keyword : keywords) {
+                    allResults.addAll(knowledgeRepo.findByNameContaining(keyword));
+                    if (allResults.size() >= 8) break;
+                }
+            }
+            if (allResults.isEmpty()) {
+                for (String keyword : keywords) {
+                    allResults.addAll(knowledgeRepo.findByKeywordAnywhere(keyword));
+                    if (allResults.size() >= 8) break;
+                }
+            }
+
+            // 未命中 → AI 流式兜底
+            if (allResults.isEmpty()) {
+                if (llmClient != null) {
+                    try {
+                        eventSink.accept(new QaStreamEvent("meta",
+                                metaData(Collections.emptyList(), Collections.emptyList(), "kbqa_ai")));
+                        llmClient.chatStream(RAG_SYSTEM_PROMPT,
+                                "请直接、完整地回答高中生的这个问题，不要提及知识库收录情况：\n【问题】" + question,
+                                token -> eventSink.accept(new QaStreamEvent("delta", Map.of("content", token))));
+                        eventSink.accept(new QaStreamEvent("done", Map.of()));
+                        return;
+                    } catch (Exception e) {
+                        // AI 失败降级为本地提示
+                    }
+                }
+                eventSink.accept(new QaStreamEvent("meta",
+                        metaData(Collections.emptyList(), Collections.emptyList(), "kbqa")));
+                streamText("抱歉，知识库中未找到相关知识点，且 AI 服务暂不可用。请换个方式提问或浏览知识图谱。",
+                        chunk -> eventSink.accept(new QaStreamEvent("delta", Map.of("content", chunk))));
+                eventSink.accept(new QaStreamEvent("done", Map.of()));
+                return;
+            }
+
+            // 命中 → 组装检索结果并流式输出
+            StringBuilder answer = new StringBuilder();
+            answer.append("根据知识库查询，为您找到以下相关信息：\n\n");
+            int count = 0;
+            for (KnowledgeNode node : allResults) {
+                if (count >= 5) break;
+                relatedNodeIds.add(node.getId());
+                sources.add(node.getName());
+                answer.append("**").append(node.getName()).append("** [").append(node.getSubject()).append("]\n");
+                if (node.getDescription() != null && !node.getDescription().isEmpty()) {
+                    answer.append(node.getDescription()).append("\n");
+                }
+                answer.append("\n");
+                count++;
+            }
+            List<String> matchedSubjects = identifySubjects(question);
+            if (matchedSubjects.size() > 1) {
+                answer.append("\n---\n**跨学科关联提示**：您的问题涉及")
+                      .append(String.join("、", matchedSubjects)).append("等多个学科领域的知识。");
+            }
+
+            eventSink.accept(new QaStreamEvent("meta", metaData(relatedNodeIds, sources, "kbqa")));
+            streamText(answer.toString(),
+                    chunk -> eventSink.accept(new QaStreamEvent("delta", Map.of("content", chunk))));
+            eventSink.accept(new QaStreamEvent("done", Map.of()));
+        } catch (Exception e) {
+            eventSink.accept(new QaStreamEvent("error",
+                    Map.of("message", e.getMessage() == null ? e.toString() : e.getMessage())));
+        }
+    }
+
+    /** 本地文本按小段流式输出（模拟打字效果），让 KBQA 也有逐字渲染体验。 */
+    private void streamText(String text, Consumer<String> onChunk) throws InterruptedException {
+        if (text == null || text.isEmpty()) return;
+        int step = 12;
+        for (int i = 0; i < text.length(); i += step) {
+            onChunk.accept(text.substring(i, Math.min(i + step, text.length())));
+            Thread.sleep(16L);
+        }
+    }
+
+    public record QaStreamEvent(String name, Object data) {}
+
+    private Map<String, Object> metaData(List<Long> relatedNodeIds, List<String> sources, String mode) {
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("relatedNodeIds", relatedNodeIds);
+        meta.put("sources", sources);
+        meta.put("mode", mode);
+        return meta;
+    }
+
+    private RagContext buildContext(String question) {
+        List<String> matchedSubjects = identifySubjects(question);
+        List<String> keywords = extractKeywords(question);
+        Set<KnowledgeNode> context = new LinkedHashSet<>();
+        context.addAll(knowledgeRepo.findByNameInQuestion(question));
+        if (context.size() < 12) {
+            for (String keyword : keywords) {
+                context.addAll(knowledgeRepo.findByNameContaining(keyword));
+                context.addAll(knowledgeRepo.findByKeywordAnywhere(keyword));
+                if (context.size() >= 12) break;
+            }
+        }
+        if (context.isEmpty() && !matchedSubjects.isEmpty()) {
+            for (String subject : matchedSubjects) {
+                context.addAll(knowledgeRepo.findBySubject(subject));
+                if (context.size() >= 12) break;
+            }
+        }
+
+        List<Long> relatedNodeIds = new ArrayList<>();
+        List<String> sources = new ArrayList<>();
+        StringBuilder kb = new StringBuilder();
+        for (KnowledgeNode node : context) {
+            if (kb.length() > 6000) break;
+            kb.append("- ").append(node.getName()).append(" [").append(node.getSubject()).append("]：")
+              .append(node.getDescription() == null ? "" : node.getDescription()).append("\n");
+            relatedNodeIds.add(node.getId());
+            sources.add(node.getName());
+        }
+
+        String userPrompt;
+        if (kb.length() > 0) {
+            userPrompt = "【知识库上下文】\n" + kb + "\n【问题】" + question +
+                    "\n请结合知识库上下文回答，并在末尾列出引用的知识点名称。";
+        } else {
+            userPrompt = "请直接、完整地回答高中生的这个问题，不要提及知识库收录情况：\n【问题】" + question;
+        }
+        return new RagContext(userPrompt, relatedNodeIds, sources);
+    }
+
+    private static class RagContext {
+        final String userPrompt;
+        final List<Long> relatedNodeIds;
+        final List<String> sources;
+        RagContext(String userPrompt, List<Long> relatedNodeIds, List<String> sources) {
+            this.userPrompt = userPrompt;
+            this.relatedNodeIds = relatedNodeIds;
+            this.sources = sources;
         }
     }
 
