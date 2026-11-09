@@ -57,12 +57,34 @@ class KnowledgeServiceTest {
     void addKnowledge_setsCreateTimeAndSaves() {
         KnowledgeNode node = new KnowledgeNode();
         node.setName("新知识点");
+        node.setSubject("高中物理");
+        Subject subject = new Subject();
+        subject.setId(1L);
+        subject.setName("高中物理");
+        when(subjectRepo.findByName("高中物理")).thenReturn(List.of(subject));
         when(knowledgeRepo.save(any(KnowledgeNode.class))).thenAnswer(inv -> inv.getArgument(0));
 
         KnowledgeNode saved = knowledgeService.addKnowledge(node);
 
         assertNotNull(saved.getCreateTime());
+        assertEquals(1L, saved.getSubjectId());
         verify(knowledgeRepo).save(node);
+    }
+
+    @Test
+    void addKnowledge_fillsSubjectNameFromId() {
+        KnowledgeNode node = new KnowledgeNode();
+        node.setName("新知识点");
+        node.setSubjectId(2L);
+        Subject subject = new Subject();
+        subject.setId(2L);
+        subject.setName("高中化学");
+        when(subjectRepo.findById(2L)).thenReturn(Optional.of(subject));
+        when(knowledgeRepo.save(any(KnowledgeNode.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        KnowledgeNode saved = knowledgeService.addKnowledge(node);
+
+        assertEquals("高中化学", saved.getSubject());
     }
 
     @Test

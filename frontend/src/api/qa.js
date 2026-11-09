@@ -93,6 +93,11 @@ export function getTemplates() {
   return request.get('/qa/template/list')
 }
 
+/** 问答历史：该用户 actionType='QA' 的学习记录（时间倒序） */
+export function getQaHistory(userId) {
+  return request.get('/qa/history', { params: { userId } })
+}
+
 export function addTemplate(data) {
   return request.post('/qa/template/add', data)
 }

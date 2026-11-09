@@ -64,12 +64,29 @@ public class KnowledgeService {
     }
 
     public KnowledgeNode addKnowledge(KnowledgeNode node) {
+        applySubjectId(node);
         node.setCreateTime(LocalDateTime.now());
         return knowledgeRepo.save(node);
     }
 
     public KnowledgeNode updateKnowledge(KnowledgeNode node) {
+        applySubjectId(node);
         return knowledgeRepo.save(node);
+    }
+
+    private void applySubjectId(KnowledgeNode node) {
+        if (node == null) return;
+        if (node.getSubjectId() != null) {
+            subjectRepo.findById(node.getSubjectId()).ifPresent(subject -> {
+                if (node.getSubject() == null || node.getSubject().isBlank()) {
+                    node.setSubject(subject.getName());
+                }
+            });
+            return;
+        }
+        if (node.getSubject() == null || node.getSubject().isBlank()) return;
+        subjectRepo.findByName(node.getSubject()).stream().findFirst()
+                .ifPresent(subject -> node.setSubjectId(subject.getId()));
     }
 
     public void deleteKnowledge(Long id) {
@@ -213,6 +230,7 @@ public class KnowledgeService {
                     node.setName(name);
                     node.setType(normalizeType.apply(e.getType()));
                     node.setSubject(e.getSubject() == null || e.getSubject().isBlank() ? "未分类" : e.getSubject());
+                    applySubjectId(node);
                     node.setDescription(e.getDescription());
                     node.setTags(sourceMarker == null ? "文档导入" : sourceMarker);
                     node.setIsCross(relatedNames.contains(name) || !relatedNames.isEmpty());
@@ -301,6 +319,7 @@ public class KnowledgeService {
                 node.setName(name);
                 node.setType(getCellString(row.getCell(1)));
                 node.setSubject(getCellString(row.getCell(2)));
+                applySubjectId(node);
                 node.setDifficulty((int) getCellNumeric(row.getCell(3)));
                 node.setDescription(getCellString(row.getCell(4)));
                 node.setTags(getCellString(row.getCell(5)));

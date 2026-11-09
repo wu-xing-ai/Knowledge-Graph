@@ -7,6 +7,7 @@ import com.zhiplatform.dto.AssignmentVO;
 import com.zhiplatform.dto.ClazzVO;
 import com.zhiplatform.dto.TaskVO;
 import com.zhiplatform.entity.mysql.Clazz;
+import com.zhiplatform.entity.mysql.Material;
 import com.zhiplatform.entity.mysql.User;
 import com.zhiplatform.repository.mysql.UserRepository;
 import com.zhiplatform.service.TeachingService;
@@ -148,5 +149,59 @@ class TeachingControllerTest {
                         .content("{\"assignmentId\":1,\"answer\":\"答案\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    void listMaterials_success() throws Exception {
+        Material m = new Material();
+        m.setId(9L);
+        m.setTitle("班级资料");
+        when(teachingService.listByClazz(1L)).thenReturn(List.of(m));
+
+        mockMvc.perform(get("/api/teaching/manage/material/list")
+                        .principal(principal)
+                        .param("clazzId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].title").value("班级资料"));
+    }
+
+    @Test
+    void addMaterial_success() throws Exception {
+        mockCurrentUser("TEACHER");
+        Material saved = new Material();
+        saved.setId(9L);
+        saved.setTitle("物理拓展阅读");
+        saved.setClazzId(1L);
+        when(teachingService.addMaterial(any(Material.class), eq(10L))).thenReturn(saved);
+
+        mockMvc.perform(post("/api/teaching/manage/material")
+                        .principal(principal)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"物理拓展阅读\",\"content\":\"链接\",\"clazzId\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(9))
+                .andExpect(jsonPath("$.data.title").value("物理拓展阅读"));
+    }
+
+    @Test
+    void deleteMaterial_success() throws Exception {
+        mockMvc.perform(delete("/api/teaching/manage/material/9").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        verify(teachingService).deleteMaterial(9L);
+    }
+
+    @Test
+    void myMaterials_success() throws Exception {
+        Material m = new Material();
+        m.setId(9L);
+        m.setTitle("我的资料");
+        when(teachingService.listForStudent(21L)).thenReturn(List.of(m));
+
+        mockMvc.perform(get("/api/teaching/material/my")
+                        .principal(() -> "stu1")
+                        .param("userId", "21"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].title").value("我的资料"));
     }
 }

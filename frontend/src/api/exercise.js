@@ -43,3 +43,35 @@ export function deleteNote(id) {
 export function getNotes(userId, category) {
   return request.get('/exercise/note/list', { params: { userId, category } })
 }
+
+export function addFavorite(data) {
+  return request.post('/exercise/favorite/add', data)
+}
+
+export function deleteFavorite(id) {
+  return request.delete(`/exercise/favorite/${id}`)
+}
+
+export function getFavorites(userId) {
+  return request.get('/exercise/favorite/list', { params: { userId } })
+}
+
+export function getPracticeQuestions(params) {
+  return request.get('/exercise/practice/list', { params })
+}
+
+export function submitPractice(data) {
+  return request.post('/exercise/practice/submit', data)
+}
+
+export function getMistakes(userId) {
+  return request.get('/exercise/mistake/list', { params: { userId } })
+}
+
+export function removeMistake(id) {
+  return request.delete(`/exercise/mistake/${id}`)
+}
+
+export function getExerciseStats() {
+  return request.get('/exercise/stats')
+}

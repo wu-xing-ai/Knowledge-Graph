@@ -4,6 +4,8 @@ import com.zhiplatform.entity.mysql.Exercise;
 import com.zhiplatform.entity.mysql.Note;
 import com.zhiplatform.entity.mysql.StudyRecord;
 import com.zhiplatform.repository.mysql.ExerciseRepository;
+import com.zhiplatform.repository.mysql.FavoriteRepository;
+import com.zhiplatform.repository.mysql.MistakeRepository;
 import com.zhiplatform.repository.mysql.NoteRepository;
 import com.zhiplatform.repository.mysql.StudyRecordRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,12 +29,16 @@ class ExerciseServiceTest {
     private StudyRecordRepository recordRepo;
     @Mock
     private NoteRepository noteRepo;
+    @Mock
+    private FavoriteRepository favoriteRepo;
+    @Mock
+    private MistakeRepository mistakeRepo;
 
     private ExerciseService exerciseService;
 
     @BeforeEach
     void setUp() {
-        exerciseService = new ExerciseService(exerciseRepo, recordRepo, noteRepo);
+        exerciseService = new ExerciseService(exerciseRepo, recordRepo, noteRepo, favoriteRepo, mistakeRepo);
     }
 
     @Test

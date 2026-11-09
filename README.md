@@ -1,4 +1,14 @@
+<div align="center">
+
 # 知联汇学 —— 面向高中师生的交叉学科知识图谱平台
+
+![Java](https://img.shields.io/badge/Java-17-orange) ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.5-6DB33F) ![Vue](https://img.shields.io/badge/Vue-3-42B883) ![Element Plus](https://img.shields.io/badge/Element%20Plus-2.x-409EFF) ![AntV G6](https://img.shields.io/badge/AntV%20G6-4.x-1B7CE0) ![Neo4j](https://img.shields.io/badge/Neo4j-4.x-008CC1) ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1) ![FastAPI](https://img.shields.io/badge/FastAPI-模型微服务-009688)
+
+<img src="docs/screenshots/03-graph-visualization.png" alt="交叉学科知识图谱可视化预览" width="86%"/>
+
+<p><sub>交叉学科知识图谱可视化（AntV G6 · 学科配色 · 节点交互）</sub></p>
+
+</div>
 
 > 基于 SpringBoot + Vue3 + Neo4j + MySQL 构建的交叉学科知识图谱教学辅助平台，服务于高中物理、化学、生物、航天拓展、环境（水污染治理）等学科的交叉关联教学。
 
@@ -7,18 +17,20 @@
 ## 目录
 
 - [项目简介](#项目简介)
-- [一键部署](#一键部署)
+- [✨ 功能演示](#-功能演示)
+- [一键部署](#一键部署推荐)
 - [Docker 部署](#docker-部署可选)
 - [技术栈](#技术栈)
 - [项目结构](#项目结构)
 - [环境要求](#环境要求)
 - [快速启动](#快速启动)
+- [环境变量（.env）](#环境变量env)
+- [登录开关（演示模式）](#登录开关演示模式)
 - [Neo4j 图数据库使用指南](#neo4j-图数据库使用指南)
 - [数据库初始化](#数据库初始化)
+- [自动化测试](#自动化测试)
 - [功能说明](#功能说明)
 - [用户角色与权限](#用户角色与权限)
-- [API 接口文档](#api-接口文档)
-- [学科配色方案](#学科配色方案)
 - [常见问题](#常见问题)
 
 ---
@@ -32,6 +44,61 @@
 - **知识库管理**：教师可管理知识点、学科分类、交叉关系，支持 Excel 批量导入导出
 - **学习辅助**：知识溯源、笔记收藏、习题练习、学习记录
 - **系统管理**：用户管理、权限管控、操作日志
+
+---
+
+## ✨ 功能演示
+
+> 以下截图均来自平台实际运行界面，按「通用 → 学生端 → 教师端 → 管理端」组织。
+
+### 🔐 通用 · 登录与核心体验
+
+| ![登录与注册](docs/screenshots/01-login-register.png) | ![首页工作台](docs/screenshots/02-dashboard.png) |
+|:---:|:---:|
+| **登录 / 注册**（师生角色，教师注册需管理员审核） | **首页工作台**（教师视角，学生为差异化视图） |
+
+| ![知识图谱可视化](docs/screenshots/03-graph-visualization.png) | ![智能问答](docs/screenshots/04-qa.png) |
+|:---:|:---:|
+| **交叉学科知识图谱可视化**（学科配色 · 缩放拖拽 · 双击展开） | **智能问答**（KBQA / GraphRAG 双模式，回答与图谱联动高亮） |
+
+### 🎓 学生端 · 学习辅助
+
+| ![学习辅助刷题](docs/screenshots/05-practice.png) | ![个人学习中心](docs/screenshots/15-study-center.png) |
+|:---:|:---:|
+| **学习辅助 · 刷题与判分解析**（按学科/知识点练习，错题与收藏） | **个人学习中心**（学习资料 / 问答历史 / 笔记） |
+
+| ![我的学习任务](docs/screenshots/14-my-tasks.png) |
+|:---:|
+| **我的学习任务**（学生视角，查看教师布置任务并提交完成情况） |
+
+### 🧑‍🏫 教师端 · 教学管理
+
+<details>
+<summary><b>点击展开 7 张教师端截图</b></summary>
+
+| ![知识库管理](docs/screenshots/06-knowledge-base.png) | ![知识溯源关联图谱](docs/screenshots/07-knowledge-tracing.png) |
+|:---:|:---:|
+| **知识库管理**（知识点列表 · CRUD · Excel 批量导入 · 文档导入 AI 抽取） | **知识溯源 · 关联图谱**（知识点来源与关联路径） |
+
+| ![图谱配置](docs/screenshots/08-graph-config.png) | ![习题管理](docs/screenshots/09-exercise-manage.png) |
+|:---:|:---:|
+| **交叉学科图谱配置**（布局与预览） | **习题与考点管理**（作答统计） |
+
+| ![班级小组管理](docs/screenshots/10-class-group.png) | ![任务布置与完成情况](docs/screenshots/11-task-status.png) |
+|:---:|:---:|
+| **班级与小组管理**（小组成员弹窗） | **任务布置与完成情况**（教师批改视角） |
+
+| ![任务布置表单](docs/screenshots/12-task-form.png) |
+|:---:|
+| **任务布置表单**（填写状态） |
+
+</details>
+
+### 🛠️ 管理端 · 系统管理
+
+| ![系统管理](docs/screenshots/13-system-admin.png) |
+|:---:|
+| **系统管理**（用户管理列表：审核 / 角色调整 / 重置密码 / 启用禁用 / 操作日志） |
 
 ---
 
@@ -59,8 +126,8 @@ cd deploy && sudo bash install.sh
 | `MYSQL_PASSWORD` | MySQL root 密码 | `MYSQL_PASSWORD=wjx1314520` |
 | `NEO4J_PASSWORD` | Neo4j neo4j 密码 | `NEO4J_PASSWORD=MyNeo4j2026!` |
 | `JWT_SECRET` | 登录令牌签名密钥（≥32 字符） | `JWT_SECRET='MyJwtSecret2026ForZhiPlatform!@#'` |
-| `MODELSCOPE_API_KEY` | 魔搭 AI key（问答/文档抽取） | `MODELSCOPE_API_KEY=ms-xxxxxxxx` |
-| `PADDLE_OCR_TOKEN` | PaddleOCR token（扫描件 OCR） | `PADDLE_OCR_TOKEN=xxxxxxxx` |
+| `MODELSCOPE_API_KEY` | 魔搭 AI key（问答/文档抽取，由模型微服务读取） | `MODELSCOPE_API_KEY=ms-xxxxxxxx` |
+| `PADDLE_OCR_TOKEN` | PaddleOCR token（扫描件 OCR，由模型微服务读取） | `PADDLE_OCR_TOKEN=xxxxxxxx` |
 | `SERVER_NAME` | Nginx 域名或 IP | `SERVER_NAME=kg.example.com` |
 | `CLEAN_BUILD` | 设为 `1` 强制 `mvn clean` 全量构建（默认增量，构建中断后可续跑） | `CLEAN_BUILD=1` |
 
@@ -294,6 +361,18 @@ java -jar target/zhi-platform-1.0.0.jar
 Started ZhiPlatformApplication in X.XXX seconds
 ```
 
+### 3.1 启动模型微服务（LLM / OCR 网关，Python FastAPI）
+
+> 模型能力（问答/抽取 LLM、扫描件 OCR）统一由 Python 微服务 `model-service/` 提供，后端通过 `MODEL_SERVICE_URL`（默认 `http://localhost:8000`）访问。若本地不配置云端密钥，平台其余功能（图谱、KBQA 检索等）不受影响，仅 AI 相关功能返回 503。
+
+```bash
+cd model-service
+python -m pip install -r requirements.txt    # 首次
+python -m uvicorn app.main:app --port 8000   # 启动（默认 8000）
+```
+
+验证：`curl http://localhost:8000/health` 返回 `{"status":"ok",...}`。
+
 ### 4. 启动前端
 
 ```bash
@@ -330,15 +409,61 @@ Local: http://localhost:3000/
 
 | 变量 | 说明 |
 |------|------|
-| `PADDLE_OCR_TOKEN` | 云端 PaddleOCR（AI Studio）token，用于扫描件/图片 OCR |
-| `MODELSCOPE_API_KEY` | 魔搭 ModelScope API key（云端 LLM 知识抽取，默认模型 MiniMax-M1-80k） |
+| `PADDLE_OCR_TOKEN` | 云端 PaddleOCR（AI Studio）token，用于扫描件/图片 OCR（由模型微服务读取） |
+| `MODELSCOPE_API_KEY` | 魔搭 ModelScope API key（云端 LLM，默认模型 MiniMax-M1-80k，由模型微服务读取） |
+| `MODEL_SERVICE_URL` | 模型微服务地址，默认 `http://localhost:8000`（Docker 部署自动注入） |
+| `AUTH_ENABLED` | 登录鉴权开关，默认 `true`；设为 `false` 进入演示模式（免登录浏览），详见[登录开关](#登录开关演示模式) |
+| `DEMO_USERNAME` | 演示模式使用的账号，默认 `admin`（须为已存在且启用的用户名），详见[登录开关](#登录开关演示模式) |
 
 使用方式：
 1. 复制 `.env.example` 为 `.env` 并填入真实值；
 2. 启动脚本（`scripts/start-all.ps1` / `scripts/start-backend.ps1`）会自动加载 `.env` 到环境变量；
-3. 后端 `application.yml` 通过 `${PADDLE_OCR_TOKEN:}` 读取（未设置时为空，OCR 会提示失败，不会误用假 token）。
+3. **模型能力统一走 Python 微服务 `model-service/`**：后端只访问 `MODEL_SERVICE_URL`，密钥在模型微服务侧通过环境变量读取（未设置时对应接口返回 503，不会误用假 token）。
 
 > ⚠️ 不要把 `.env` 或真实 token 提交到公开仓库；如需在 CI/服务器上运行，直接在环境中配置同名变量即可。
+
+---
+
+## 登录开关（演示模式）
+
+平台支持通过环境变量一键关闭登录，适合**课堂演示、评委展示、截图录屏**等场景，无需现场输入账号密码：
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `AUTH_ENABLED` | `true` | 是否要求登录鉴权。`false` = 演示模式：接口放行，免登录使用全部页面 |
+| `DEMO_USERNAME` | `admin` | 演示模式自动使用的账号；须为 `sys_user` 中已存在且启用的用户名，否则自动回退到系统中第一个启用的管理员 |
+
+### 工作原理
+
+- **后端**：`AUTH_ENABLED=false` 时 Spring Security 放行全部接口；未携带 token 的请求由 `JwtFilter` 自动注入演示账号身份，业务代码中的 `Principal` 仍然可用，**权限规则、业务逻辑零改动**。携带有效 token 的请求仍按原身份处理。
+- **前端**：路由守卫启动时调用公开接口 `GET /api/app/status` 检测模式，演示模式下自动以演示账号登录并跳过登录页，直接进入工作台。
+- **恢复登录**：把 `AUTH_ENABLED` 改回 `true`（或删除该变量）并重启后端即可，无需改代码。
+
+### 使用方式
+
+```bash
+# 方式一：写入项目根目录 .env（启动脚本会自动加载，长期生效）
+AUTH_ENABLED=false
+DEMO_USERNAME=admin
+
+# 方式二：临时演示（PowerShell，仅当前进程生效）
+$env:AUTH_ENABLED="false"; java -jar backend/target/zhi-platform-1.0.0.jar
+
+# 方式三：Linux 服务器临时演示
+AUTH_ENABLED=false java -jar backend/zhi-platform-1.0.0.jar
+```
+
+开启后打开首页的效果（免登录直达工作台）：
+
+<p align="center">
+  <img src="docs/demo-dashboard.png" alt="演示模式：免登录直达工作台" width="86%"/>
+  <br><sub>演示模式实测：右上角自动以演示账号「系统管理员」身份进入</sub>
+</p>
+
+> ⚠️ 演示模式下所有访问者共享演示账号的数据与操作权限（默认为 admin），**仅建议本地或可信环境使用**；若需公开展示，建议将 `DEMO_USERNAME` 指向演示专用账号，演示结束后及时恢复 `AUTH_ENABLED=true`。
+
+---
+
 ## Neo4j 图数据库使用指南
 
 ### 什么是图数据库？
@@ -518,7 +643,7 @@ Linux/macOS：
 ### 4. 智能问答
 
 - **KBQA 模式**：自然语言输入 → 名称直查 / 关键词模糊匹配（名称·描述·标签）→ 返回答案 + 关联图谱高亮；检索不到时自动升级为 AI 回答
-- **GraphRAG 模式**：知识图谱检索（相关知识点/学科）→ 组装上下文 → 魔搭 MiniMax 生成带引用来源的跨学科答案（`.env` 配置 `MODELSCOPE_API_KEY`）
+- **GraphRAG 模式**：知识图谱检索（相关知识点/学科）→ 组装上下文 → 模型微服务（默认魔搭 MiniMax）生成带引用来源的跨学科答案（`.env` 配置 `MODELSCOPE_API_KEY`）
 - 问答历史自动保存（教师/学生均可），可在个人学习中心查看
 - 聊天式界面，问答结果联动右侧知识图谱高亮
 
@@ -528,7 +653,7 @@ Linux/macOS：
 - 知识点 CRUD（概念、公式、实验等类型）
 - 交叉关系管理（新增/删除知识点间跨学科关系）
 - Excel 批量导入知识点（知识库页可「下载模板」，含表头/示例行/填写说明；可选「关联知识点」「交叉关系」列批量建关系）
-- 文档解析（Word / PDF / 图片 -> 文本）：文本型 PDF 本地 PDFBox 提取，扫描件/图片走云端 PaddleOCR（token 见 application.yml，可用环境变量 PADDLE_OCR_TOKEN 覆盖）
+- 文档解析（Word / PDF / 图片 -> 文本）：文本型 PDF 本地 PDFBox 提取，扫描件/图片走模型微服务的 OCR 接口（云端 PaddleOCR，token 由模型微服务读取 `PADDLE_OCR_TOKEN`）
 - 文档导入知识图谱：知识库管理页「文档导入」Tab 上传 Word/PDF/图片，后端异步任务 + 前端轮询（每 4 秒）展示真实进度（解析/OCR → AI 抽取 → 存草稿）；抽取结果自动存为「待确认导入」草稿（切换页面不丢失）→ 教师勾选确认 → 写入 Neo4j；「已导入的文档」支持一键删除该文档解析出的知识点与关系
 
 ### 6. 更多功能

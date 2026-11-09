@@ -8,6 +8,19 @@ export function expandNode(nodeId) {
   return request.get('/graph/expand', { params: { nodeId } })
 }
 
+export function getTrace(nodeId, depth = 3) {
+  return request.get('/graph/trace', { params: { nodeId, depth } })
+}
+
+export function generateGraph(keywords, limit = 20) {
+  return request.get('/graph/generate', {
+    params: { keywords, limit },
+    paramsSerializer: {
+      indexes: null
+    }
+  })
+}
+
 export function getRelations() {
   return request.get('/graph/relations')
 }

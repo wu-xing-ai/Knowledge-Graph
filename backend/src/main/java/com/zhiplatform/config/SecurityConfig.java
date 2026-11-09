@@ -21,20 +21,39 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final AuthModeProperties authMode;
 
-    public SecurityConfig(JwtFilter jwtFilter) {
+    public SecurityConfig(JwtFilter jwtFilter, AuthModeProperties authMode) {
         this.jwtFilter = jwtFilter;
+        this.authMode = authMode;
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        if (authMode.isAuthEnabled()) {
+            configureProtectedRoutes(http);
+        } else {
+            // 演示模式（AUTH_ENABLED=false）：接口全部放行，
+            // 请求身份由 JwtFilter 注入演示账号，具体身份仍可用（Principal 非空）
+            http.authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .anyRequest().permitAll()
+            );
+        }
+        http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
+
+    /** 正常鉴权模式下的路由规则 */
+    private void configureProtectedRoutes(HttpSecurity http) throws Exception {
+        http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/user/login", "/api/user/register", "/error").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // 用户管理：仅管理员
                 .requestMatchers("/api/user/list").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/user/batch-import").hasAnyRole("TEACHER", "ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/user/status").hasRole("ADMIN")
                 // 教师功能：教师或管理员
                 .requestMatchers(HttpMethod.POST, "/api/knowledge/**").hasAnyRole("TEACHER", "ADMIN")
@@ -50,6 +69,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/exercise/note/**").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/exercise/note/**").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/api/exercise/note/**").authenticated()
+                // 收藏/刷题提交/错题：学生也可读写，需登录
+                .requestMatchers(HttpMethod.POST, "/api/exercise/favorite/**").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/exercise/favorite/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/exercise/practice/submit").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/exercise/mistake/**").authenticated()
+                // 作答统计：仅教师或管理员
+                .requestMatchers(HttpMethod.GET, "/api/exercise/stats").hasAnyRole("TEACHER", "ADMIN")
 // 习题管理：教师或管理员
                 .requestMatchers(HttpMethod.POST, "/api/exercise/**").hasAnyRole("TEACHER", "ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/exercise/**").hasAnyRole("TEACHER", "ADMIN")
@@ -60,10 +86,7 @@ public class SecurityConfig {
                 // 系统管理：仅管理员
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
-
-        return http.build();
+            );
     }
 
     @Bean

@@ -53,6 +53,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { getGraphData, saveGraphConfig, getGraphConfigs, deleteGraphConfig } from '@/api/graph'
+import { SUBJECT_COLORS } from '@/utils/subjectColors'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
 import { ElMessage } from 'element-plus'
 
@@ -60,14 +61,8 @@ const previewData = ref({ nodes: [], edges: [] })
 const savedConfigs = ref([])
 const config = reactive({ name: '', layout: 'force' })
 
-const subjectColors = {
-  '高中物理': '#2563EB',
-  '高中化学': '#D97706',
-  '高中生物': '#16A34A',
-  '航天拓展': '#7C3AED',
-  '环境科普': '#0D9488',
-  '交叉知识点': '#4F46E5'
-}
+// 学科配色统一引用 utils/subjectColors.js（与图谱图例、知识库标签同源）
+const subjectColors = SUBJECT_COLORS
 
 async function loadPreview() {
   const res = await getGraphData({ limit: 100 })

@@ -44,6 +44,14 @@ Copy-Item (Join-Path $PSScriptRoot "deploy-templates\zhi-platform.service") "$ou
 Copy-Item (Join-Path $root "install.sh") "$out\" -Force
 Copy-Item (Join-Path $PSScriptRoot "deploy-templates\env.example") "$out\.env.example" -Force
 
+# 模型微服务（install.sh 强制要求 deploy/model-service/requirements.txt）
+New-Item -ItemType Directory -Force -Path "$out\model-service" | Out-Null
+Copy-Item (Join-Path $root "model-service\app") "$out\model-service\app" -Recurse -Force
+Copy-Item (Join-Path $root "model-service\requirements.txt") "$out\model-service\" -Force
+Copy-Item (Join-Path $root "model-service\Dockerfile") "$out\model-service\" -Force -ErrorAction SilentlyContinue
+# 排除 Python 缓存
+Get-ChildItem "$out\model-service" -Directory -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq "__pycache__" } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Host ""
 Write-Host "===== 部署包已生成: $out =====" -ForegroundColor Green
 Write-Host "上传整个 deploy/ 目录到服务器后："

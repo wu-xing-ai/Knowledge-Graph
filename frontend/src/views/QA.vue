@@ -4,19 +4,27 @@
       <!-- 左侧问答区 -->
       <div class="chat-panel glass-panel">
         <div class="panel-header">
-          <h3>智能问答</h3>
-          <el-radio-group v-model="qaMode" size="small">
-            <el-radio-button label="kbqa">KBQA</el-radio-button>
-            <el-radio-button label="graphrag">GraphRAG</el-radio-button>
-          </el-radio-group>
-          <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
-            KBQA：本地知识库快速检索；GraphRAG：AI 大模型增强回答（较慢）。KBQA 检索不到时也会自动用 AI 回答。
+          <div class="panel-title-row">
+            <h3>智能问答</h3>
+            <div class="panel-title-actions">
+              <el-radio-group v-model="qaMode" size="small">
+                <el-radio-button label="kbqa">KBQA</el-radio-button>
+                <el-radio-button label="graphrag">GraphRAG</el-radio-button>
+              </el-radio-group>
+              <el-button text size="small" @click="openHistory">历史</el-button>
+            </div>
           </div>
+          <p class="panel-desc">
+            KBQA：本地知识库快速检索；GraphRAG：AI 大模型增强回答（较慢）。KBQA 检索不到时也会自动用 AI 回答。
+          </p>
         </div>
 
         <!-- 预设问句 -->
         <div v-if="messages.length === 0" class="templates">
-          <p style="color:var(--text-secondary);margin-bottom:12px;">常见跨学科问题：</p>
+          <div class="templates-title-row">
+            <p style="color:var(--text-secondary);">常见跨学科问题：</p>
+            <el-button v-if="userStore.isTeacher()" text size="small" @click="openTemplateManage">管理</el-button>
+          </div>
           <el-button v-for="t in templates" :key="t.id" text @click="sendMessage(t.question)" class="template-btn">
             {{ t.question }}
           </el-button>
@@ -37,6 +45,20 @@
                 <div v-html="formatMessage(msg.content)" class="msg-content"></div>
                 <span v-if="msg.streaming" class="stream-cursor"></span>
               </template>
+              <!-- 答案溯源：来源知识点标签，点击联动右侧图谱高亮 -->
+              <div v-if="msg.sources && msg.sources.length" class="source-row">
+                <span class="source-label">来源：</span>
+                <el-tag
+                  v-for="(s, si) in msg.sources"
+                  :key="si"
+                  size="small"
+                  effect="plain"
+                  class="source-tag"
+                  @click="highlightSource(msg, si)"
+                >
+                  {{ s }}
+                </el-tag>
+              </div>
             </div>
           </div>
         </div>
@@ -70,16 +92,46 @@
           height="calc(100vh - 220px)"
         />
       </div>
+
+      <!-- 问答历史抽屉 -->
+      <el-drawer v-model="historyVisible" title="问答历史" size="360px">
+        <div v-if="historyList.length === 0" class="history-empty">暂无问答记录</div>
+        <div
+          v-for="h in historyList"
+          :key="h.id"
+          class="history-item"
+          @click="applyHistory(h)"
+        >
+          <p class="history-question">{{ h.extra }}</p>
+          <div class="history-meta">
+            <el-tag size="small" effect="plain">{{ h.targetType === 'graphrag' ? 'GraphRAG' : 'KBQA' }}</el-tag>
+            <span class="history-time">{{ formatTime(h.createTime) }}</span>
+          </div>
+        </div>
+      </el-drawer>
+
+      <!-- 问句模板管理（仅教师/管理员可见入口） -->
+      <el-dialog v-model="templateDialogVisible" title="问句模板管理" width="480px">
+        <div class="template-manage-list">
+          <div v-for="t in templates" :key="t.id" class="template-manage-item">{{ t.question }}</div>
+          <div v-if="templates.length === 0" class="history-empty">暂无模板</div>
+        </div>
+        <div class="template-add-row">
+          <el-input v-model="newTemplateQuestion" placeholder="输入新的预设问句" @keyup.enter="submitTemplate" />
+          <el-button type="primary" :loading="templateSaving" @click="submitTemplate">添加</el-button>
+        </div>
+      </el-dialog>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue'
-import { kbqaStream, graphRagStream, getTemplates } from '@/api/qa'
+import { kbqaStream, graphRagStream, getTemplates, getQaHistory, addTemplate } from '@/api/qa'
 import { saveRecord } from '@/api/exercise'
 import { useUserStore } from '@/store/user'
 import { getGraphData, expandNode } from '@/api/graph'
+import { ElMessage } from 'element-plus'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
 import { renderMarkdown } from '@/utils/markdown'
 
@@ -132,6 +184,9 @@ async function sendStream(q, mode) {
             assistantMsg.waitingText = 'AI 正在思考…'
           }
         }
+        // 答案溯源：sources（来源知识点名称）与 relatedNodeIds 同序对应
+        assistantMsg.sources = meta.sources || []
+        assistantMsg.relatedNodeIds = meta.relatedNodeIds || []
         highlightIds.value = meta.relatedNodeIds || []
         if (highlightIds.value.length > 0) {
           await loadRelatedGraph(highlightIds.value)
@@ -187,6 +242,76 @@ function formatMessage(text) {
   return renderMarkdown(text)
 }
 
+// 点击来源标签：sources 与 relatedNodeIds 同序对应，把对应节点加入高亮
+function highlightSource(msg, index) {
+  const nodeId = msg.relatedNodeIds?.[index]
+  if (nodeId == null) return
+  if (!highlightIds.value.includes(nodeId)) {
+    highlightIds.value = [...highlightIds.value, nodeId]
+  }
+}
+
+// ========== 问答历史 ==========
+const historyVisible = ref(false)
+const historyList = ref([])
+
+// 打开抽屉时加载当前用户的问答历史
+async function openHistory() {
+  historyVisible.value = true
+  const userId = userStore.user?.userId
+  if (!userId) return
+  try {
+    const res = await getQaHistory(userId)
+    if (res.code === 200) historyList.value = res.data || []
+  } catch (e) {
+    // 历史加载失败不影响问答
+  }
+}
+
+// 点击历史记录：回填问题到输入框并关闭抽屉
+function applyHistory(item) {
+  input.value = item.extra || ''
+  historyVisible.value = false
+}
+
+// 后端返回 "yyyy-MM-ddTHH:mm:ss"，简单格式化为可读时间
+function formatTime(t) {
+  return t ? String(t).replace('T', ' ').slice(0, 19) : ''
+}
+
+// ========== 问句模板管理（教师/管理员） ==========
+const templateDialogVisible = ref(false)
+const newTemplateQuestion = ref('')
+const templateSaving = ref(false)
+
+function openTemplateManage() {
+  templateDialogVisible.value = true
+}
+
+// 新增模板成功后刷新列表
+async function submitTemplate() {
+  const question = newTemplateQuestion.value.trim()
+  if (!question) return
+  templateSaving.value = true
+  try {
+    const res = await addTemplate({ question, createBy: userStore.user?.userId })
+    if (res.code === 200) {
+      ElMessage.success('模板已添加')
+      newTemplateQuestion.value = ''
+      await loadTemplates()
+    } else {
+      ElMessage.error(res.message || '添加失败')
+    }
+  } finally {
+    templateSaving.value = false
+  }
+}
+
+async function loadTemplates() {
+  const res = await getTemplates()
+  if (res.code === 200) templates.value = res.data
+}
+
 function scrollBottom() {
   nextTick(() => {
     if (messagesRef.value) {
@@ -196,8 +321,7 @@ function scrollBottom() {
 }
 
 onMounted(async () => {
-  const res = await getTemplates()
-  if (res.code === 200) templates.value = res.data
+  await loadTemplates()
 })
 </script>
 
@@ -227,12 +351,96 @@ onMounted(async () => {
 .panel-header {
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+
+  h3 { font-size: 16px; color: var(--text-primary); white-space: nowrap; }
+
+  .panel-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .panel-desc {
+    margin-top: 8px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .panel-title-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+.templates-title-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--bg-panel);
-
-  h3 { font-size: 16px; color: var(--text-primary); }
+  margin-bottom: 12px;
+}
+.source-row {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.source-label {
+  flex-shrink: 0;
+}
+.source-tag {
+  cursor: pointer;
+  color: var(--primary);
+  &:hover { opacity: 0.8; }
+}
+.history-empty {
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px 0;
+}
+.history-item {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  &:hover { border-color: var(--primary); }
+}
+.history-question {
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+.history-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.history-time {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.template-manage-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+.template-manage-item {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.template-add-row {
+  display: flex;
+  gap: 8px;
 }
 .templates {
   padding: 20px;

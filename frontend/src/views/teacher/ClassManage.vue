@@ -24,9 +24,10 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="240" fixed="right">
+          <el-table-column label="操作" width="300" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" text @click="openStudents(row)">学生</el-button>
+              <el-button type="primary" text @click="openMaterials(row)">资料</el-button>
               <el-button type="primary" text @click="openClazzDialog(row)">编辑</el-button>
               <el-popconfirm title="删除班级将同时移除学生与小组，确定？" @confirm="handleDeleteClazz(row.id)">
                 <template #reference>
@@ -79,6 +80,44 @@
                 <el-popconfirm title="将该学生移出班级？" @confirm="handleRemoveStudent(row.id)">
                   <template #reference>
                     <el-button type="danger" text size="small">移出</el-button>
+                  </template>
+                </el-popconfirm>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-dialog>
+
+        <!-- 班级学习资料管理 -->
+        <el-dialog v-model="materialsDialog" :title="`${currentClazz?.name || ''} - 学习资料`" width="760px">
+          <el-form :model="materialForm" label-width="80px" class="material-form">
+            <el-form-item label="标题" required>
+              <el-input v-model="materialForm.title" maxlength="200" placeholder="资料标题" />
+            </el-form-item>
+            <el-form-item label="内容">
+              <el-input v-model="materialForm.content" type="textarea" :rows="3"
+                        placeholder="资料说明或链接文本" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="handleSaveMaterial">
+                {{ materialForm.id ? '保存修改' : '发布资料' }}
+              </el-button>
+              <el-button v-if="materialForm.id" @click="resetMaterialForm">取消编辑</el-button>
+            </el-form-item>
+          </el-form>
+          <el-table :data="materials" stripe border size="small">
+            <el-table-column prop="title" label="标题" min-width="160" show-overflow-tooltip />
+            <el-table-column prop="content" label="内容" min-width="220" show-overflow-tooltip />
+            <el-table-column label="发布时间" width="160">
+              <template #default="{ row }">
+                {{ formatTime(row.createTime) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="120" fixed="right">
+              <template #default="{ row }">
+                <el-button type="primary" text size="small" @click="editMaterial(row)">编辑</el-button>
+                <el-popconfirm title="删除该资料？" @confirm="handleDeleteMaterial(row.id)">
+                  <template #reference>
+                    <el-button type="danger" text size="small">删除</el-button>
                   </template>
                 </el-popconfirm>
               </template>
@@ -190,7 +229,8 @@ import {
   getClassStudents, addClassMember, removeClassMember,
   getGroups, addGroup, updateGroup, deleteGroup,
   getGroupMembers, addGroupMember, removeGroupMember,
-  getStudentCandidates, getAllStudents
+  getStudentCandidates, getAllStudents,
+  getMaterials, addMaterial, updateMaterial, deleteMaterial
 } from '@/api/teaching'
 
 const activeTab = ref('clazz')
@@ -290,6 +330,62 @@ async function handleRemoveStudent(userId) {
   fetchClassStudents(currentClazz.value.id)
   fetchCandidates(currentClazz.value.id)
   fetchClasses()
+}
+
+// ---------- 班级学习资料 ----------
+const materialsDialog = ref(false)
+const materials = ref([])
+const materialForm = reactive({ id: null, title: '', content: '' })
+
+function formatTime(value) {
+  return value ? String(value).replace('T', ' ').slice(0, 19) : ''
+}
+
+async function openMaterials(row) {
+  currentClazz.value = row
+  materialsDialog.value = true
+  resetMaterialForm()
+  await fetchMaterials(row.id)
+}
+
+async function fetchMaterials(clazzId) {
+  const res = await getMaterials(clazzId)
+  if (res.code === 200) materials.value = res.data || []
+}
+
+function resetMaterialForm() {
+  Object.assign(materialForm, { id: null, title: '', content: '' })
+}
+
+function editMaterial(row) {
+  Object.assign(materialForm, { id: row.id, title: row.title, content: row.content || '' })
+}
+
+async function handleSaveMaterial() {
+  if (!currentClazz.value) return
+  if (!materialForm.title.trim()) {
+    ElMessage.warning('请填写资料标题')
+    return
+  }
+  if (materialForm.id) {
+    await updateMaterial({ ...materialForm })
+    ElMessage.success('资料已更新')
+  } else {
+    await addMaterial({
+      ...materialForm,
+      clazzId: currentClazz.value.id
+    })
+    ElMessage.success('资料已发布')
+  }
+  resetMaterialForm()
+  fetchMaterials(currentClazz.value.id)
+}
+
+async function handleDeleteMaterial(id) {
+  await deleteMaterial(id)
+  ElMessage.success('资料已删除')
+  resetMaterialForm()
+  fetchMaterials(currentClazz.value.id)
 }
 
 // ---------- 小组 ----------

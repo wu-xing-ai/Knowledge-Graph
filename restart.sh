@@ -55,7 +55,7 @@ wait_backend() {
 print_status() {
   echo ""
   echo "=============================================="
-  for s in mysql mariadb neo4j nginx zhi-platform; do
+  for s in mysql mariadb neo4j nginx zhi-model-service zhi-platform; do
     if has_service "$s"; then
       printf "  %-14s : %s\n" "$s" "$(systemctl is-active "$s" 2>/dev/null || echo unknown)"
     fi
@@ -69,12 +69,14 @@ case "$CMD" in
     svc_do start mysql mariadb
     svc_do start neo4j
     svc_do start nginx
+    has_service zhi-model-service && svc_do start zhi-model-service
     has_service zhi-platform && svc_do start zhi-platform || die "未部署后端，请先运行 install.sh"
     wait_backend && log "后端已就绪" || warn "后端未就绪，用 restart.sh logs 查看日志"
     print_status
     ;;
   stop)
     has_service zhi-platform && svc_do stop zhi-platform
+    has_service zhi-model-service && svc_do stop zhi-model-service
     svc_do stop nginx
     svc_do stop neo4j
     svc_do stop mysql mariadb
@@ -84,9 +86,15 @@ case "$CMD" in
     svc_do restart mysql mariadb
     svc_do restart neo4j
     svc_do restart nginx
+    has_service zhi-model-service && svc_do restart zhi-model-service
     has_service zhi-platform && svc_do restart zhi-platform || die "未部署后端，请先运行 install.sh"
     if wait_backend; then log "后端已就绪，访问 http://服务器IP/"; else warn "后端未就绪，最近日志："; journalctl -u zhi-platform -n 30 --no-pager 2>/dev/null | tail -30 || true; fi
     print_status
+    ;;
+  backend)
+    has_service zhi-platform || die "未部署后端，请先运行 install.sh"
+    svc_do restart zhi-platform
+    if wait_backend; then log "后端已就绪"; else warn "后端未就绪，最近日志："; journalctl -u zhi-platform -n 30 --no-pager 2>/dev/null | tail -30 || true; fi
     ;;
   backend)
     has_service zhi-platform || die "未部署后端，请先运行 install.sh"

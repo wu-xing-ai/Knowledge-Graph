@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.regex.Pattern;
 
 /**
- * 文档知识抽取服务：把文档解析出的文本交给魔搭 MiniMax 抽取实体 + 交叉关系。
+ * 文档知识抽取服务：把文档解析出的文本交给模型微服务抽取实体 + 交叉关系。
  */
 @Service
 public class KnowledgeExtractService {
@@ -27,12 +27,12 @@ public class KnowledgeExtractService {
             "输出格式：{\"entities\":[{\"name\":\"\",\"type\":\"\",\"subject\":\"\",\"description\":\"\"}]," +
             "\"relations\":[{\"source\":\"\",\"target\":\"\",\"relationType\":\"\",\"description\":\"\"}]}";
 
-    private final ModelscopeLlmClient llmClient;
+    private final ModelServiceClient llmClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final Pattern THINK_BLOCK = Pattern.compile("<think>.*?</think>", Pattern.DOTALL);
 
-    public KnowledgeExtractService(ModelscopeLlmClient llmClient) {
+    public KnowledgeExtractService(ModelServiceClient llmClient) {
         this.llmClient = llmClient;
     }
 

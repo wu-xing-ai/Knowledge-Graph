@@ -19,6 +19,18 @@
         </template>
       </el-table-column>
       <el-table-column prop="examOutline" label="考纲要求" width="150" show-overflow-tooltip />
+      <el-table-column label="作答次数/人数" width="120">
+        <template #default="{ row }">
+          <span v-if="statsMap[row.id]">{{ statsMap[row.id].attempts }} / {{ statsMap[row.id].userCount }}</span>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="正确率" width="100">
+        <template #default="{ row }">
+          <span v-if="statsMap[row.id]">{{ statsMap[row.id].correctRate }}%</span>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="150" fixed="right">
         <template #default="{ row }">
           <el-button type="primary" text @click="openDialog(row)">编辑</el-button>
@@ -74,10 +86,11 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { getExercises, addExercise, updateExercise, deleteExercise } from '@/api/exercise'
+import { getExercises, addExercise, updateExercise, deleteExercise, getExerciseStats } from '@/api/exercise'
 import { ElMessage } from 'element-plus'
 
 const exercises = ref([])
+const statsMap = ref({})
 const dialogVisible = ref(false)
 const typeMap = { CHOICE: '选择题', FILL: '填空题', JUDGE: '判断题', ESSAY: '简答题' }
 const form = reactive({
@@ -88,6 +101,15 @@ const form = reactive({
 async function fetchList() {
   const res = await getExercises()
   if (res.code === 200) exercises.value = res.data || []
+}
+
+async function fetchStats() {
+  const res = await getExerciseStats()
+  if (res.code === 200) {
+    const map = {}
+    for (const s of res.data || []) map[s.exerciseId] = s
+    statsMap.value = map
+  }
 }
 
 function openDialog(row) {
@@ -123,5 +145,8 @@ async function handleDelete(id) {
   fetchList()
 }
 
-onMounted(fetchList)
+onMounted(() => {
+  fetchList()
+  fetchStats()
+})
 </script>

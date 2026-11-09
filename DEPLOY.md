@@ -1,14 +1,14 @@
 ﻿# 部署指南（GitHub + 服务器）
 
-本平台前端是 Vue 静态文件、后端是 Spring Boot jar。推荐部署方式：
+本平台架构：前端 Vue 静态文件 + 后端 Spring Boot jar + **Python 模型微服务（FastAPI，统一封装 LLM / OCR）**。推荐部署方式：
 
 ```
-GitHub（私有仓库）  --git pull-->  服务器  --构建-->  Nginx(前端) + systemd(后端)
+GitHub（私有仓库）  --git pull-->  服务器  --构建-->  Nginx(前端) + systemd(后端 + 模型微服务)
 ```
 
 ## 零、一键部署（推荐，Ubuntu 22.04/24.04 / Debian 12）
 
-提供 `install.sh` 一键脚本：自动安装 JDK21、Maven、Node.js、MySQL 8、Neo4j、Nginx，自动建库、生成随机密钥（JWT/数据库/Neo4j）、配置 systemd 服务与 Nginx 反代，全程无需手动干预。
+提供 `install.sh` 一键脚本：自动安装 JDK21、Maven、Node.js、MySQL 8、Neo4j、Nginx、Python3，自动建库、生成随机密钥（JWT/数据库/Neo4j）、配置 systemd 服务（后端 + 模型微服务）与 Nginx 反代，全程无需手动干预。
 
 ```bash
 # 方式 A：全新服务器（自动 clone 源码并构建）
@@ -57,6 +57,7 @@ git push -u origin main
 | 软件 | 版本 | 说明 |
 |------|------|------|
 | JDK | 17+ | 后端运行 |
+| Python | 3.10+ | 模型微服务运行（install.sh 会自动装） |
 | Node.js | 18+ | 构建前端 |
 | Maven | 3.6+ | 构建后端 |
 | MySQL | 8.0+ | 关系库 |
@@ -78,6 +79,12 @@ cd frontend
 npm install
 npm run build                          # 生成 dist/
 cd ..
+
+# 模型微服务（Python FastAPI：LLM / OCR 统一网关）
+cd model-service
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cd ..
 ```
 
 ### 3. 准备生产配置
@@ -97,6 +104,8 @@ SPRING_NEO4J_AUTHENTICATION_USERNAME=neo4j
 SPRING_NEO4J_AUTHENTICATION_PASSWORD=你的neo4j密码
 MODELSCOPE_API_KEY=你的魔搭key
 PADDLE_OCR_TOKEN=你的PaddleOCR token
+# 模型微服务地址（保持默认即可）
+MODEL_SERVICE_URL=http://127.0.0.1:8000
 EOF
 sudo chmod 600 /etc/zhi-platform.env
 ```
@@ -111,8 +120,27 @@ mysql -uroot -p < backend/src/main/resources/schema.sql
 cypher-shell -u neo4j -p <你的密码> < backend/src/main/resources/neo4j-init.cypher
 ```
 
-### 5. 后端 systemd 服务
-`/etc/systemd/system/zhi-platform.service`：
+### 5. 模型微服务 + 后端 systemd 服务
+
+模型微服务 `/etc/systemd/system/zhi-model-service.service`：
+```ini
+[Unit]
+Description=ZhiPlatform Model Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/zhi-platform/model-service
+EnvironmentFile=/etc/zhi-platform.env
+ExecStart=/opt/zhi-platform/model-service/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+后端 `/etc/systemd/system/zhi-platform.service`：
 ```ini
 [Unit]
 Description=ZhiPlatform Backend
@@ -131,8 +159,8 @@ WantedBy=multi-user.target
 ```
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now zhi-platform
-sudo systemctl status zhi-platform
+sudo systemctl enable --now zhi-model-service zhi-platform
+sudo systemctl status zhi-model-service zhi-platform
 ```
 
 ### 6. Nginx 配置
@@ -174,7 +202,9 @@ cd backend && mvn clean package -DskipTests && cd ..
 cp backend/target/zhi-platform-1.0.0.jar /opt/zhi-platform/backend/
 cd frontend && npm run build && cd ..
 cp -r frontend/dist/. /opt/zhi-platform/frontend/
-sudo systemctl restart zhi-platform
+cd model-service && .venv/bin/pip install -r requirements.txt && cd ..
+cp -r model-service/app/. /opt/zhi-platform/model-service/app/
+sudo systemctl restart zhi-platform zhi-model-service
 ```
 
 > 提示：也可以用项目自带的 `scripts/build-deploy.ps1` 在本地生成 `deploy/` 部署包，直接上传服务器，跳过在服务器上构建（服务器只需 JDK17 + MySQL + Neo4j + Nginx）。

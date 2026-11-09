@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/user")
@@ -70,6 +71,15 @@ public class UserController {
         Integer status = Integer.valueOf(params.get("status").toString());
         userService.updateUserStatus(userId, status);
         return Result.success();
+    }
+
+    @PostMapping("/batch-import")
+    public Result<Map<String, Object>> batchImport(@RequestParam("file") MultipartFile file) {
+        try {
+            return Result.success(userService.batchImportStudents(file));
+        } catch (Exception e) {
+            return Result.error(400, "导入失败: " + e.getMessage());
+        }
     }
 }
 

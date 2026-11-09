@@ -5,6 +5,7 @@ import com.zhiplatform.dto.LoginRequest;
 import com.zhiplatform.dto.LoginResponse;
 import com.zhiplatform.dto.RegisterRequest;
 import com.zhiplatform.entity.mysql.User;
+import com.zhiplatform.repository.mysql.ClazzRepository;
 import com.zhiplatform.repository.mysql.UserRepository;
 import com.zhiplatform.security.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,12 +35,16 @@ class UserServiceTest {
     private JwtUtil jwtUtil;
     @Mock
     private AuthenticationManager authenticationManager;
+    @Mock
+    private ClazzRepository clazzRepository;
+    @Mock
+    private TeachingService teachingService;
 
     private UserService userService;
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, passwordEncoder, jwtUtil, authenticationManager);
+        userService = new UserService(userRepository, passwordEncoder, jwtUtil, authenticationManager, clazzRepository, teachingService);
     }
 
     @Test

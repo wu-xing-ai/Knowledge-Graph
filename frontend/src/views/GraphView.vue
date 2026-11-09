@@ -1,8 +1,9 @@
-﻿<template>
+<template>
   <div class="page-container graph-page">
     <div class="page-header">
       <h2>交叉学科知识图谱</h2>
       <div style="display:flex;gap:8px;">
+        <el-button @click="shareLink"><el-icon><Link /></el-icon>分享</el-button>
         <el-button @click="exportPNG">导出PNG</el-button>
         <el-button type="primary" @click="exportJSON">导出JSON</el-button>
       </div>
@@ -29,6 +30,7 @@
 
     <!-- 图谱 -->
     <KnowledgeGraph
+      ref="graphRef"
       :data="graphData"
       :highlight-node-ids="highlightIds"
       :layout="layoutType"
@@ -38,17 +40,24 @@
     />
 
     <!-- 节点详情 -->
-    <NodeDetail v-model="detailVisible" :node="selectedNode" @expand="onExpand" />
+    <NodeDetail v-model="detailVisible" :node="selectedNode" @expand="onExpand" @collect="onCollect" />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { getGraphData, expandNode } from '@/api/graph'
 import { getSubjects } from '@/api/knowledge'
+import { addFavorite } from '@/api/exercise'
+import { useUserStore } from '@/store/user'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
 import NodeDetail from '@/components/NodeDetail.vue'
 import { ElMessage } from 'element-plus'
+
+const userStore = useUserStore()
+const route = useRoute()
+const router = useRouter()
 
 const subjects = ref([])
 const graphData = ref({ nodes: [], edges: [] })
@@ -56,8 +65,29 @@ const highlightIds = ref([])
 const layoutType = ref('dagre')
 const detailVisible = ref(false)
 const selectedNode = ref(null)
+const graphRef = ref(null)
 
 const filters = reactive({ subjectIds: [], keyword: '' })
+
+watch(layoutType, syncQuery)
+
+// 筛选与布局同步到 URL query，生成可分享的视图链接
+function syncQuery() {
+  router.replace({
+    query: {
+      ...(filters.subjectIds.length ? { subjects: filters.subjectIds.join(',') } : {}),
+      ...(filters.keyword ? { keyword: filters.keyword } : {}),
+      layout: layoutType.value
+    }
+  })
+}
+
+function shareLink() {
+  syncQuery()
+  navigator.clipboard.writeText(window.location.href)
+    .then(() => ElMessage.success('分享链接已复制，打开即可还原当前视图'))
+    .catch(() => ElMessage.warning('复制失败，请手动复制地址栏链接'))
+}
 
 async function fetchData() {
   try {
@@ -69,6 +99,7 @@ async function fetchData() {
     if (res.code === 200) {
       graphData.value = res.data
       highlightIds.value = []
+      syncQuery()
     }
   } catch (e) {
     // handled
@@ -96,8 +127,36 @@ async function onExpand(node) {
   }
 }
 
+// 收藏知识点
+async function onCollect(node) {
+  try {
+    const res = await addFavorite({
+      userId: userStore.user?.userId,
+      knowledgeId: node.id,
+      knowledgeName: node.name,
+      category: node.subject
+    })
+    if (res.code === 200) {
+      ElMessage.success('已收藏')
+    } else {
+      ElMessage.error(res.message || '收藏失败')
+    }
+  } catch (e) {
+    ElMessage.error('收藏失败')
+  }
+}
+
 function exportPNG() {
-  ElMessage.info('请使用浏览器截图功能导出图谱')
+  const dataUrl = graphRef.value?.exportPNG()
+  if (!dataUrl) {
+    ElMessage.warning('图谱尚未渲染完成')
+    return
+  }
+  const a = document.createElement('a')
+  a.href = dataUrl
+  a.download = 'knowledge-graph.png'
+  a.click()
+  ElMessage.success('已导出 PNG')
 }
 
 function exportJSON() {
@@ -111,6 +170,15 @@ function exportJSON() {
 }
 
 onMounted(async () => {
+  // 从分享链接还原视图（学科筛选 / 关键词 / 布局）
+  const q = route.query
+  if (q.subjects) {
+    filters.subjectIds = String(q.subjects).split(',').map(Number).filter(Boolean)
+  }
+  if (q.keyword) filters.keyword = String(q.keyword)
+  if (q.layout && ['dagre', 'force', 'circular', 'radial'].includes(String(q.layout))) {
+    layoutType.value = String(q.layout)
+  }
   const res = await getSubjects()
   if (res.code === 200) subjects.value = res.data
   fetchData()

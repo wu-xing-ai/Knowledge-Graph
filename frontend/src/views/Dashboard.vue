@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="page-container">
     <div class="welcome">
       <div class="welcome-content">
@@ -70,17 +70,17 @@ const userStore = useUserStore()
 
 const teacherCards = [
   { title: '知识库管理', desc: '管理交叉学科知识点与关联关系', path: '/teacher/knowledge-base', icon: 'Notebook', color: '#1783FF' },
-  { title: '知识图谱', desc: '可视化浏览跨学科知识关联', path: '/graph', icon: 'Share', color: '#4F46E5' },
-  { title: '智能问答', desc: '跨学科问题智能解答', path: '/qa', icon: 'ChatDotRound', color: '#D97706' },
-  { title: '习题管理', desc: '管理跨学科习题与考点', path: '/teacher/exercise', icon: 'Edit', color: '#16A34A' },
-  { title: '图谱配置', desc: '自定义图谱布局与配色', path: '/teacher/graph-config', icon: 'Setting', color: '#7C3AED' },
-  { title: '系统管理', desc: '用户权限与系统日志', path: '/teacher/admin', icon: 'UserFilled', color: '#0D9488' }
+  { title: '知识图谱', desc: '可视化浏览跨学科知识关联', path: '/graph', icon: 'Share', color: '#6055A5' },
+  { title: '智能问答', desc: '跨学科问题智能解答', path: '/qa', icon: 'ChatDotRound', color: '#ED7D31' },
+  { title: '习题管理', desc: '管理跨学科习题与考点', path: '/teacher/exercise', icon: 'Edit', color: '#70AD47' },
+  { title: '图谱配置', desc: '自定义图谱布局与配色', path: '/teacher/graph-config', icon: 'Setting', color: '#8859A3' },
+  { title: '系统管理', desc: '用户权限与系统日志', path: '/teacher/admin', icon: 'UserFilled', color: '#39B5A8' }
 ]
 
 const studentCards = [
-  { title: '知识图谱', desc: '探索跨学科知识关联', path: '/graph', icon: 'Share', color: '#4F46E5' },
-  { title: '智能问答', desc: '跨学科问题智能解答', path: '/qa', icon: 'ChatDotRound', color: '#D97706' },
-  { title: '学习辅助', desc: '知识点溯源与刷题', path: '/learning', icon: 'Reading', color: '#16A34A' },
+  { title: '知识图谱', desc: '探索跨学科知识关联', path: '/graph', icon: 'Share', color: '#6055A5' },
+  { title: '智能问答', desc: '跨学科问题智能解答', path: '/qa', icon: 'ChatDotRound', color: '#ED7D31' },
+  { title: '学习辅助', desc: '知识点溯源与刷题', path: '/learning', icon: 'Reading', color: '#70AD47' },
   { title: '学习中心', desc: '个人学习记录与笔记', path: '/student/center', icon: 'User', color: '#1783FF' }
 ]
 

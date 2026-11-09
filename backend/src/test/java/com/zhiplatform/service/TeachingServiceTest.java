@@ -40,13 +40,15 @@ class TeachingServiceTest {
     private ExerciseRepository exerciseRepo;
     @Mock
     private TeachingGraphService graphService;
+    @Mock
+    private MaterialRepository materialRepo;
 
     private TeachingService teachingService;
 
     @BeforeEach
     void setUp() {
         teachingService = new TeachingService(clazzRepo, groupRepo, memberRepo, assignmentRepo,
-                recordRepo, userRepo, knowledgeRepo, exerciseRepo, graphService);
+                recordRepo, userRepo, knowledgeRepo, exerciseRepo, graphService, materialRepo);
     }
 
     @Test
@@ -264,5 +266,86 @@ class TeachingServiceTest {
         assertEquals("火箭小组", ((GroupVO) result.get("group")).getName());
         assertEquals(1, ((List<?>) result.get("members")).size());
         assertEquals(1, ((List<?>) result.get("available")).size());
+    }
+
+    @Test
+    void addMaterial_validatesTitleAndClazz() {
+        Material m = new Material();
+        assertThrows(IllegalArgumentException.class, () -> teachingService.addMaterial(m, 10L));
+        m.setTitle("  ");
+        assertThrows(IllegalArgumentException.class, () -> teachingService.addMaterial(m, 10L));
+        m.setTitle("物理拓展阅读");
+        assertThrows(IllegalArgumentException.class, () -> teachingService.addMaterial(m, 10L));
+        verify(materialRepo, never()).save(any());
+    }
+
+    @Test
+    void addMaterial_success_setsCreatorAndTime() {
+        Material m = new Material();
+        m.setTitle("物理拓展阅读");
+        m.setContent("https://example.com/read");
+        m.setClazzId(1L);
+        when(materialRepo.save(any(Material.class))).thenAnswer(inv -> {
+            Material saved = inv.getArgument(0);
+            saved.setId(9L);
+            return saved;
+        });
+
+        Material saved = teachingService.addMaterial(m, 10L);
+
+        assertEquals(9L, saved.getId());
+        assertEquals(10L, saved.getCreateBy());
+        assertNotNull(saved.getCreateTime());
+    }
+
+    @Test
+    void updateMaterial_updatesTitleAndContent() {
+        Material exist = new Material();
+        exist.setId(9L);
+        exist.setTitle("旧标题");
+        exist.setContent("旧内容");
+        when(materialRepo.findById(9L)).thenReturn(Optional.of(exist));
+        when(materialRepo.save(any(Material.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Material update = new Material();
+        update.setId(9L);
+        update.setTitle("新标题");
+        update.setContent("新内容");
+        Material saved = teachingService.updateMaterial(update);
+
+        assertEquals("新标题", saved.getTitle());
+        assertEquals("新内容", saved.getContent());
+    }
+
+    @Test
+    void listForStudent_returnsOwnClazzMaterials() {
+        User student = new User();
+        student.setId(21L);
+        student.setRole("STUDENT");
+        student.setClazzId(1L);
+        Material m = new Material();
+        m.setId(9L);
+        m.setTitle("班级资料");
+        m.setClazzId(1L);
+        when(userRepo.findById(21L)).thenReturn(Optional.of(student));
+        when(materialRepo.findByClazzIdIn(List.of(1L))).thenReturn(new java.util.ArrayList<>(List.of(m)));
+
+        var list = teachingService.listForStudent(21L);
+
+        assertEquals(1, list.size());
+        assertEquals("班级资料", list.get(0).getTitle());
+    }
+
+    @Test
+    void listForStudent_noClazz_returnsEmpty() {
+        User student = new User();
+        student.setId(21L);
+        student.setRole("STUDENT");
+        when(userRepo.findById(21L)).thenReturn(Optional.of(student));
+
+        var list = teachingService.listForStudent(21L);
+
+        assertTrue(list.isEmpty());
+        verify(materialRepo, never()).findByClazzIdIn(any());
     }
 }

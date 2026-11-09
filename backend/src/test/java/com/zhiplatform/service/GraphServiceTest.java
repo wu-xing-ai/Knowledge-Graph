@@ -62,6 +62,45 @@ class GraphServiceTest {
     }
 
     @Test
+    void traceKnowledge_returnsPathNodesAndEdges() {
+        KnowledgeNode n1 = new KnowledgeNode();
+        n1.setId(1L);
+        n1.setName("起始");
+        n1.setSubject("高中物理");
+        KnowledgeNode n2 = new KnowledgeNode();
+        n2.setId(2L);
+        n2.setName("上游");
+        n2.setSubject("高中化学");
+
+        mockQueryResult = List.of(Map.of("n", n1, "relationType", "前置知识", "m", n2));
+        when(knowledgeRepo.findById(1L)).thenReturn(Optional.of(n1));
+        when(knowledgeRepo.findById(2L)).thenReturn(Optional.of(n2));
+
+        GraphDataDTO dto = graphService.traceKnowledge(1L, 3);
+
+        assertEquals(2, dto.getNodes().size());
+        assertEquals(1, dto.getEdges().size());
+        assertEquals("前置知识", dto.getEdges().get(0).getRelationType());
+    }
+
+    @Test
+    void traceKnowledge_noPath_keepsStartNode() {
+        KnowledgeNode start = new KnowledgeNode();
+        start.setId(9L);
+        start.setName("孤立点");
+        start.setSubject("高中生物");
+
+        mockQueryResult = List.of();
+        when(knowledgeRepo.findById(9L)).thenReturn(Optional.of(start));
+
+        GraphDataDTO dto = graphService.traceKnowledge(9L, 3);
+
+        assertEquals(1, dto.getNodes().size());
+        assertEquals(9L, dto.getNodes().get(0).getId());
+        assertEquals(0, dto.getEdges().size());
+    }
+
+    @Test
     void getGraphData_withKeywordUsesSearch() {
         KnowledgeNode n1 = new KnowledgeNode();
         n1.setId(1L);
@@ -132,6 +171,28 @@ class GraphServiceTest {
 
         GraphDataDTO dto = graphService.getGraphData(null, null, 200);
         assertEquals("#70AD47", dto.getNodes().get(0).getColor());
+    }
+
+    @Test
+    void generateByKeywords_returnsOnlyRelationsBetweenSeeds() {
+        KnowledgeNode seed = new KnowledgeNode();
+        seed.setId(10L);
+        seed.setName("酶的特性");
+        seed.setSubject("高中生物");
+        mockQueryResult = List.of(Map.of("n", seed, "relationType", "共通原理", "m", seed));
+        when(knowledgeRepo.findById(10L)).thenReturn(Optional.of(seed));
+
+        GraphDataDTO dto = graphService.generateByKeywords(List.of("酶"), 10);
+
+        assertEquals(1, dto.getNodes().size());
+        assertEquals(10L, dto.getNodes().get(0).getId());
+    }
+
+    @Test
+    void generateByKeywords_withoutKeywordsReturnsEmpty() {
+        GraphDataDTO dto = graphService.generateByKeywords(List.of(" ", ""), 10);
+        assertTrue(dto.getNodes().isEmpty());
+        assertTrue(dto.getEdges().isEmpty());
     }
     @Test
     void getRelations_returnsRelationList() {

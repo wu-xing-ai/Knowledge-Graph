@@ -9,11 +9,22 @@
         ></i>{{ s.label }}
       </span>
     </div>
+    <!-- 节点悬浮提示：应用场景与衔接逻辑（功能.md 2.1） -->
+    <div
+      v-if="tooltip.visible"
+      class="node-tooltip"
+      :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }"
+    >
+      <div class="tip-title">{{ tooltip.node?.fullLabel || tooltip.node?.label }}</div>
+      <div class="tip-meta">{{ tooltip.node?.subject }}<template v-if="tooltip.node?.isCross"> · 跨学科</template></div>
+      <div v-if="tooltip.node?.description" class="tip-desc">{{ tooltip.node.description }}</div>
+      <div v-if="tooltip.node?.examOutline" class="tip-outline">考纲要求：{{ tooltip.node.examOutline }}</div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, onBeforeUnmount, nextTick, computed } from 'vue'
+import { ref, reactive, onMounted, watch, onBeforeUnmount, nextTick, computed } from 'vue'
 import G6 from '@antv/g6'
 
 const props = defineProps({
@@ -27,6 +38,11 @@ const emit = defineEmits(['nodeClick', 'nodeDblclick'])
 
 const container = ref(null)
 let graph = null
+// 节点悬浮提示状态
+const tooltip = reactive({ visible: false, x: 0, y: 0, node: null })
+
+// 边标签顶层分组：把标签文本从边分组搬到节点之上，避免与节点重叠时被圆球盖住
+let edgeLabelGroup = null
 
 const LEGEND = [
   { label: '高中物理', color: '#5B9BD5' },
@@ -116,14 +132,19 @@ function initGraph() {
         }
       },
       labelCfg: {
+        // 水平排布 + 白底圆角衬底：配合 raiseEdgeLabels 置顶，密集区也不会被节点/连线/其他标签挡住
+        autoRotate: false,
         style: {
-          fill: '#5A6068',
-          fontSize: 18,
-          fontWeight: 600,
-          stroke: '#FFFFFF',
-          lineWidth: 3
-        },
-        autoRotate: true
+          fill: '#646A73',
+          fontSize: 12,
+          fontWeight: 500,
+          background: {
+            fill: '#FFFFFF',
+            fillOpacity: 0.88,
+            radius: 4,
+            padding: [2, 5, 2, 5]
+          }
+        }
       }
     },
     nodeStateStyles: {
@@ -161,6 +182,19 @@ function initGraph() {
   graph.on('node:dblclick', (e) => {
     emit('nodeDblclick', e.item.getModel())
   })
+
+  // 悬浮显示节点详情（位置用画布坐标，随缩放平移天然正确；拖动画布/节点时隐藏）
+  graph.on('node:mouseenter', (e) => {
+    tooltip.node = e.item.getModel()
+    tooltip.x = Math.min(e.canvasX + 14, width - 280)
+    tooltip.y = e.canvasY + 16
+    tooltip.visible = true
+  })
+  const hideTooltip = () => { tooltip.visible = false }
+  graph.on('node:mouseleave', hideTooltip)
+  graph.on('canvas:dragstart', hideTooltip)
+  graph.on('node:dragstart', hideTooltip)
+  graph.on('wheelzoom', hideTooltip)
 
   updateGraph()
 }
@@ -228,8 +262,26 @@ function formatData(data) {
   return { nodes, edges }
 }
 
+// 边标签置顶：G6 v4 中标签随边绘制在节点下层。将每条边的 text-shape 搬到
+// 根分组下的专用顶层分组（与节点/边同一坐标系，缩放平移自动跟随；add 会自动从原父级摘除）
+function raiseEdgeLabels() {
+  if (!graph) return
+  if (!edgeLabelGroup || edgeLabelGroup.get('destroyed')) {
+    edgeLabelGroup = graph.get('group').addGroup({ id: 'edge-label-top-group' })
+  }
+  edgeLabelGroup.toFront()
+  graph.getEdges().forEach(edge => {
+    const container = edge.getContainer()
+    // 先搬底衬 rect（text-bg-shape）再搬文字，保证文字压在底衬之上
+    container.findAllByName('text-bg-shape').forEach(bg => edgeLabelGroup.add(bg))
+    container.findAllByName('text-shape').forEach(label => edgeLabelGroup.add(label))
+  })
+}
+
 function updateGraph() {
   if (!graph) return
+  // 已搬到顶层分组的旧标签不会随旧边一起销毁，先清空避免残留重复
+  if (edgeLabelGroup && !edgeLabelGroup.get('destroyed')) edgeLabelGroup.clear()
   const formatted = formatData(props.data)
   graph.data(formatted)
   graph.render()
@@ -305,8 +357,24 @@ onBeforeUnmount(() => {
   if (graph) {
     graph.destroy()
     graph = null
+    edgeLabelGroup = null
   }
 })
+
+// 导出 PNG：G6 画布为透明底 canvas，合成莫兰迪底色后导出，与页面观感一致
+function exportPNG() {
+  if (!graph) return null
+  const canvasEl = graph.get('canvas').get('el')
+  const out = document.createElement('canvas')
+  out.width = canvasEl.width
+  out.height = canvasEl.height
+  const ctx = out.getContext('2d')
+  ctx.fillStyle = '#F4F6F9'
+  ctx.fillRect(0, 0, out.width, out.height)
+  ctx.drawImage(canvasEl, 0, 0)
+  return out.toDataURL('image/png')
+}
+defineExpose({ exportPNG })
 </script>
 
 <style scoped lang="scss">
@@ -354,6 +422,41 @@ onBeforeUnmount(() => {
         box-sizing: border-box;
       }
     }
+  }
+}
+
+/* 节点悬浮提示卡片 */
+.node-tooltip {
+  position: absolute;
+  z-index: 3;
+  max-width: 260px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-pop);
+  pointer-events: none;
+
+  .tip-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+  }
+  .tip-meta {
+    font-size: 11px;
+    color: var(--primary);
+    margin-bottom: 6px;
+  }
+  .tip-desc {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+  .tip-outline {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
   }
 }
 </style>

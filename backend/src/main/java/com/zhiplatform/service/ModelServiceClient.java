@@ -20,28 +20,28 @@ import java.time.Duration;
 import java.util.function.Consumer;
 
 /**
- * 魔搭 ModelScope 云端 LLM（OpenAI 兼容 chat/completions）通用客户端。
+ * 模型微服务（Python FastAPI，model-service）的通用客户端。
+ * 转发 OpenAI 兼容 /v1/chat/completions，由 Python 侧统一对接魔搭 ModelScope / 本地 Ollama。
  * 供智能问答（GraphRAG）与文档知识抽取共用。
  */
 @Service
-public class ModelscopeLlmClient {
+public class ModelServiceClient {
 
     private final String baseUrl;
-    private final String apiKey;
     private final String model;
     private final long timeoutSeconds;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    // 强制 HTTP/1.1：默认 HTTP/2 会在明文连接上发 h2c Upgrade，uvicorn 不支持会直接 400
     private final HttpClient httpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(30))
             .build();
 
-    public ModelscopeLlmClient(
-            @Value("${modelscope.base-url}") String baseUrl,
-            @Value("${modelscope.api-key}") String apiKey,
-            @Value("${modelscope.model}") String model,
-            @Value("${modelscope.timeout-seconds:240}") long timeoutSeconds) {
+    public ModelServiceClient(
+            @Value("${model-service.base-url}") String baseUrl,
+            @Value("${model-service.llm-model}") String model,
+            @Value("${model-service.timeout-seconds:240}") long timeoutSeconds) {
         this.baseUrl = baseUrl;
-        this.apiKey = apiKey;
         this.model = model;
         this.timeoutSeconds = timeoutSeconds;
     }
@@ -50,9 +50,6 @@ public class ModelscopeLlmClient {
      * 单轮对话，返回助手文本内容。
      */
     public String chat(String system, String user) throws IOException, InterruptedException {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException("未配置 MODELSCOPE_API_KEY，请在 .env 中设置");
-        }
         ObjectNode root = objectMapper.createObjectNode();
         root.put("model", model);
         root.put("temperature", 0.3);
@@ -64,8 +61,7 @@ public class ModelscopeLlmClient {
         messages.addObject().put("role", "user").put("content", user);
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/chat/completions"))
-                .header("Authorization", "Bearer " + apiKey)
+                .uri(URI.create(baseUrl + "/v1/chat/completions"))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(root), StandardCharsets.UTF_8))
                 .timeout(Duration.ofSeconds(timeoutSeconds))
@@ -73,12 +69,12 @@ public class ModelscopeLlmClient {
 
         HttpResponse<String> resp = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (resp.statusCode() != 200) {
-            throw new IOException("LLM 调用失败 (HTTP " + resp.statusCode() + "): " + resp.body());
+            throw new IOException("模型服务调用失败 (HTTP " + resp.statusCode() + "): " + resp.body());
         }
         JsonNode content = objectMapper.readTree(resp.body())
                 .path("choices").path(0).path("message").path("content");
         if (content.isMissingNode() || content.asText().isBlank()) {
-            throw new IOException("LLM 返回内容为空");
+            throw new IOException("模型服务返回内容为空");
         }
         return content.asText();
     }
@@ -88,9 +84,6 @@ public class ModelscopeLlmClient {
      */
     public void chatStream(String system, String user, Consumer<String> onToken)
             throws IOException, InterruptedException {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException("未配置 MODELSCOPE_API_KEY，请在 .env 中设置");
-        }
         ObjectNode root = objectMapper.createObjectNode();
         root.put("model", model);
         root.put("temperature", 0.3);
@@ -103,8 +96,7 @@ public class ModelscopeLlmClient {
         messages.addObject().put("role", "user").put("content", user);
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/chat/completions"))
-                .header("Authorization", "Bearer " + apiKey)
+                .uri(URI.create(baseUrl + "/v1/chat/completions"))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(root), StandardCharsets.UTF_8))
                 .timeout(Duration.ofSeconds(timeoutSeconds))
@@ -116,7 +108,7 @@ public class ModelscopeLlmClient {
             try (InputStream is = resp.body()) {
                 errBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
             }
-            throw new IOException("LLM 流式调用失败 (HTTP " + resp.statusCode() + "): " + errBody);
+            throw new IOException("模型服务流式调用失败 (HTTP " + resp.statusCode() + "): " + errBody);
         }
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(resp.body(), StandardCharsets.UTF_8))) {

@@ -110,7 +110,7 @@ class QAServiceTest {
 
     @Test
     void graphRag_usesKnowledgeContextAndReturnsAnswer() throws Exception {
-        ModelscopeLlmClient llmClient = mock(ModelscopeLlmClient.class);
+        ModelServiceClient llmClient = mock(ModelServiceClient.class);
         KnowledgeNode node = new KnowledgeNode();
         node.setId(1L);
         node.setName("酶的特性");
@@ -146,7 +146,7 @@ class QAServiceTest {
 
     @Test
     void kbqa_fallsBackToAiWhenNoMatch() throws Exception {
-        ModelscopeLlmClient llmClient = mock(ModelscopeLlmClient.class);
+        ModelServiceClient llmClient = mock(ModelServiceClient.class);
         when(knowledgeRepo.findByNameContaining(anyString())).thenReturn(List.of());
         when(llmClient.chat(anyString(), anyString())).thenReturn(
                 "AI 回答：光合作用是将光能转化为化学能并合成有机物的过程。知识库暂未收录该条目的直接描述。");
@@ -184,7 +184,7 @@ class QAServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void streamGraphRag_pushesMetaDeltaThenDone() throws Exception {
-        ModelscopeLlmClient llmClient = mock(ModelscopeLlmClient.class);
+        ModelServiceClient llmClient = mock(ModelServiceClient.class);
         KnowledgeNode node = new KnowledgeNode();
         node.setId(1L);
         node.setName("酶的特性");
@@ -232,7 +232,7 @@ class QAServiceTest {
 
     @Test
     void streamGraphRag_llmError_sendsErrorEvent() throws Exception {
-        ModelscopeLlmClient llmClient = mock(ModelscopeLlmClient.class);
+        ModelServiceClient llmClient = mock(ModelServiceClient.class);
         when(knowledgeRepo.findByNameContaining(anyString())).thenReturn(List.of());
         doAnswer(inv -> {
             throw new java.io.IOException("LLM boom");
@@ -250,3 +250,4 @@ class QAServiceTest {
         assertTrue(((Map<?, ?>) last.data()).get("message").toString().contains("LLM boom"));
     }
 }
+

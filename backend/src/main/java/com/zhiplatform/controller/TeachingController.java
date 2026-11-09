@@ -8,6 +8,7 @@ import com.zhiplatform.dto.ClazzVO;
 import com.zhiplatform.dto.GroupVO;
 import com.zhiplatform.dto.TaskVO;
 import com.zhiplatform.entity.mysql.Clazz;
+import com.zhiplatform.entity.mysql.Material;
 import com.zhiplatform.entity.mysql.StudyGroup;
 import com.zhiplatform.entity.mysql.User;
 import com.zhiplatform.repository.mysql.UserRepository;
@@ -167,6 +168,45 @@ public class TeachingController {
         Long userId = Long.valueOf(body.get("userId").toString());
         Integer score = body.get("score") == null ? null : Integer.valueOf(body.get("score").toString());
         return teachingService.gradeRecord(id, userId, score);
+    }
+
+    // ==================== 学习资料（教师） ====================
+
+    @GetMapping("/manage/material/list")
+    public Result<List<Material>> listMaterials(@RequestParam Long clazzId) {
+        return Result.success(teachingService.listByClazz(clazzId));
+    }
+
+    @PostMapping("/manage/material")
+    public Result<Material> addMaterial(@RequestBody Material material, Principal principal) {
+        User user = currentUser(principal);
+        if (user == null) return Result.error(401, "未登录");
+        return Result.success(teachingService.addMaterial(material, user.getId()));
+    }
+
+    @PutMapping("/manage/material")
+    public Result<Material> updateMaterial(@RequestBody Material material) {
+        return Result.success(teachingService.updateMaterial(material));
+    }
+
+    @DeleteMapping("/manage/material/{id}")
+    public Result<Void> deleteMaterial(@PathVariable Long id) {
+        teachingService.deleteMaterial(id);
+        return Result.success();
+    }
+
+    // ==================== 学习资料（学生） ====================
+
+    @GetMapping("/material/my")
+    public Result<List<Material>> myMaterials(@RequestParam(required = false) Long userId,
+                                              Principal principal) {
+        Long uid = userId;
+        if (uid == null) {
+            User user = currentUser(principal);
+            if (user == null) return Result.error(401, "未登录");
+            uid = user.getId();
+        }
+        return Result.success(teachingService.listForStudent(uid));
     }
 
     // ==================== 学生任务 ====================

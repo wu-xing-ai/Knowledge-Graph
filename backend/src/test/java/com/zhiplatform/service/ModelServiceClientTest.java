@@ -5,11 +5,11 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class ModelscopeLlmClientTest {
+class ModelServiceClientTest {
 
     @Test
     void thinkFilter_passesThroughPlainText() {
-        ModelscopeLlmClient.ThinkFilter filter = new ModelscopeLlmClient.ThinkFilter();
+        ModelServiceClient.ThinkFilter filter = new ModelServiceClient.ThinkFilter();
         assertEquals("你好", filter.feed("你好"));
         assertEquals("世界", filter.feed("世界"));
         assertEquals("", filter.feed(""));
@@ -17,7 +17,7 @@ class ModelscopeLlmClientTest {
 
     @Test
     void thinkFilter_dropsCompleteThinkBlock() {
-        ModelscopeLlmClient.ThinkFilter filter = new ModelscopeLlmClient.ThinkFilter();
+        ModelServiceClient.ThinkFilter filter = new ModelServiceClient.ThinkFilter();
         assertEquals("", filter.feed("<think>用户的问题是：xxx"));
         assertEquals("", filter.feed("让我想想\n"));
         String tail = filter.feed("</think>答案：牛顿第三定律");
@@ -26,7 +26,7 @@ class ModelscopeLlmClientTest {
 
     @Test
     void thinkFilter_dropsThinkSplitAcrossTokens() {
-        ModelscopeLlmClient.ThinkFilter filter = new ModelscopeLlmClient.ThinkFilter();
+        ModelServiceClient.ThinkFilter filter = new ModelServiceClient.ThinkFilter();
         assertEquals("前文", filter.feed("前文"));
         assertEquals("", filter.feed("<thi"));
         assertEquals("", filter.feed("nk>草稿"));
@@ -36,7 +36,7 @@ class ModelscopeLlmClientTest {
 
     @Test
     void thinkFilter_keepsPartialTagBuffered() {
-        ModelscopeLlmClient.ThinkFilter filter = new ModelscopeLlmClient.ThinkFilter();
+        ModelServiceClient.ThinkFilter filter = new ModelServiceClient.ThinkFilter();
         assertEquals("正常文本", filter.feed("正常文本<"));
         assertEquals("", filter.feed("th"));
         assertEquals("", filter.feed("ink>隐藏"));
@@ -45,7 +45,7 @@ class ModelscopeLlmClientTest {
 
     @Test
     void thinkFilter_handlesMultipleBlocks() {
-        ModelscopeLlmClient.ThinkFilter filter = new ModelscopeLlmClient.ThinkFilter();
+        ModelServiceClient.ThinkFilter filter = new ModelServiceClient.ThinkFilter();
         assertEquals("", filter.feed("<think>a</think>"));
         assertEquals("正文1", filter.feed("正文1"));
         assertEquals("", filter.feed("<think>b</think>"));
@@ -54,3 +54,4 @@ class ModelscopeLlmClientTest {
         assertEquals("", filter.feed(""));
     }
 }
+

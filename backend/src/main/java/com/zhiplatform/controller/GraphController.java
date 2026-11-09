@@ -36,6 +36,19 @@ public class GraphController {
         return Result.success(graphService.expandNode(nodeId));
     }
 
+    @GetMapping("/trace")
+    public Result<GraphDataDTO> traceKnowledge(@RequestParam Long nodeId,
+                                               @RequestParam(defaultValue = "3") int depth) {
+        return Result.success(graphService.traceKnowledge(nodeId, depth));
+    }
+
+    @GetMapping("/generate")
+    public Result<GraphDataDTO> generateByKeywords(
+            @RequestParam List<String> keywords,
+            @RequestParam(defaultValue = "20") int limit) {
+        return Result.success(graphService.generateByKeywords(keywords, limit));
+    }
+
     // ==================== 交叉关系管理 ====================
 
     @GetMapping("/relations")

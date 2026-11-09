@@ -19,7 +19,7 @@
 #   MYSQL_PASSWORD   MySQL root 密码
 #   NEO4J_PASSWORD   Neo4j neo4j 密码
 #   JWT_SECRET       JWT 签名密钥（>=32 字节）
-#   MODELSCOPE_API_KEY / PADDLE_OCR_TOKEN   云端 AI 密钥
+#   MODELSCOPE_API_KEY / PADDLE_OCR_TOKEN   云端 AI 密钥（由模型微服务 model-service 读取）
 #   ADMIN_PASSWORD      初始管理员密码（默认 123456）
 #   CLEAN_BUILD         设为 1 强制 mvn clean 全量构建（默认增量，构建中断后可续跑）
 #   SERVER_NAME      Nginx 域名或 IP（默认自动取服务器 IP）
@@ -107,6 +107,7 @@ SPRING_NEO4J_AUTHENTICATION_USERNAME=neo4j
 SPRING_NEO4J_AUTHENTICATION_PASSWORD=${NEO4J_PASSWORD}
 MODELSCOPE_API_KEY=${MODELSCOPE_API_KEY:-}
 PADDLE_OCR_TOKEN=${PADDLE_OCR_TOKEN:-}
+MODEL_SERVICE_URL=http://127.0.0.1:8000
 EOF
   chmod 600 "$ENV_FILE"
   info "已生成 $ENV_FILE（JWT/数据库/Neo4j 均为随机密码）"
@@ -134,9 +135,9 @@ info "构建模式：$MODE（目录：$SRC）"
 install_deps() {
   if [ "$DISTRO" = "debian" ]; then
     export DEBIAN_FRONTEND=noninteractive
-    info "安装系统依赖（JDK21 / Maven / Nginx / MySQL / Node / Neo4j）..."
+    info "安装系统依赖（JDK21 / Maven / Nginx / MySQL / Node / Neo4j / Python3）..."
     apt-get update -y
-    apt-get install -y curl wget git unzip vim gnupg ca-certificates openssl sudo openjdk-21-jdk maven nginx mysql-server apache2-utils
+    apt-get install -y curl wget git unzip vim gnupg ca-certificates openssl sudo openjdk-21-jdk maven nginx mysql-server apache2-utils python3 python3-venv python3-pip
     if ! command -v node >/dev/null 2>&1; then
       info "安装 Node.js 20（NodeSource）..."
       curl -fsSL https://deb.nodesource.com/setup_20.x | bash - || true
@@ -152,8 +153,8 @@ install_deps() {
       apt-get install -y neo4j
     fi
   else
-    info "安装 RHEL 系依赖（JDK21 / Maven / Nginx / MariaDB / Node）..."
-    dnf install -y curl wget git unzip vim openssl sudo java-21-openjdk-devel maven nginx mariadb-server httpd-tools
+    info "安装 RHEL 系依赖（JDK21 / Maven / Nginx / MariaDB / Node / Python3）..."
+    dnf install -y curl wget git unzip vim openssl sudo java-21-openjdk-devel maven nginx mariadb-server httpd-tools python3 python3-pip
     if ! command -v node >/dev/null 2>&1; then
       dnf module enable -y nodejs:20 || true
       dnf install -y nodejs || true
@@ -179,13 +180,16 @@ if [ "$MODE" = "source" ]; then
   JAR="$SRC/backend/target/zhi-platform-1.0.0.jar"
   SCHEMA="$SRC/backend/src/main/resources/schema.sql"
   NEO4J_INIT="$SRC/backend/src/main/resources/neo4j-init.cypher"
+  MODEL_SERVICE_SRC="$SRC/model-service"
 else
   JAR="$SRC/backend/zhi-platform-1.0.0.jar"
   SCHEMA="$SRC/backend/schema.sql"
   NEO4J_INIT="$SRC/backend/neo4j-init.cypher"
+  MODEL_SERVICE_SRC="$SRC/model-service"
 fi
 [ -f "$JAR" ] || die "未找到后端 jar：$JAR"
 log "产物就绪：$JAR"
+[ -d "$MODEL_SERVICE_SRC" ] && [ -f "$MODEL_SERVICE_SRC/requirements.txt" ] || die "未找到模型微服务：$MODEL_SERVICE_SRC/requirements.txt"
 
 # ---------- 6. MySQL 初始化 ----------
 setup_mysql() {
@@ -249,7 +253,7 @@ setup_neo4j() {
 setup_neo4j
 
 # ---------- 8. 拷贝产物 + systemd 服务 ----------
-mkdir -p "$APP_DIR/backend" "$APP_DIR/frontend"
+mkdir -p "$APP_DIR/backend" "$APP_DIR/frontend" "$APP_DIR/model-service/app"
 cp -f "$JAR" "$APP_DIR/backend/"
 if [ -d "$SRC/frontend/dist" ]; then
   cp -rf "$SRC/frontend/dist/." "$APP_DIR/frontend/"
@@ -258,6 +262,34 @@ else
 fi
 cp -f "$SCHEMA" "$APP_DIR/backend/" 2>/dev/null || true
 cp -f "$NEO4J_INIT" "$APP_DIR/backend/" 2>/dev/null || true
+cp -rf "$MODEL_SERVICE_SRC/app/." "$APP_DIR/model-service/app/"
+
+if [ ! -d "$APP_DIR/model-service/.venv" ]; then
+  info "创建模型微服务 Python 虚拟环境并安装依赖..."
+  python3 -m venv "$APP_DIR/model-service/.venv"
+fi
+"$APP_DIR/model-service/.venv/bin/pip" install --no-cache-dir -q -r "$MODEL_SERVICE_SRC/requirements.txt"
+
+cat > /etc/systemd/system/zhi-model-service.service <<EOF
+[Unit]
+Description=ZhiPlatform Model Service (知联汇学模型微服务)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=$APP_DIR/model-service
+EnvironmentFile=$ENV_FILE
+ExecStart=$APP_DIR/model-service/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+systemctl enable zhi-model-service
+systemctl restart zhi-model-service
+log "模型微服务已启动（127.0.0.1:8000）"
 
 cat > /etc/systemd/system/zhi-platform.service <<EOF
 [Unit]
@@ -316,7 +348,15 @@ EOF
 nginx -t >/dev/null 2>&1 && { systemctl reload nginx 2>/dev/null || nginx -s reload 2>/dev/null || true; } || warn "nginx 配置检查未通过，请手动检查 /etc/nginx/conf.d/zhi-platform.conf"
 log "Nginx 已配置（80 端口，server_name=$SERVER_NAME）"
 
-# ---------- 10. 等待后端就绪 + 汇总 ----------
+# ---------- 10. 等待服务就绪 + 汇总 ----------
+info "等待模型微服务启动..."
+MS_READY=0
+for i in $(seq 1 30); do
+  if curl -s -o /dev/null -m 2 http://127.0.0.1:8000/health; then MS_READY=1; break; fi
+  sleep 2
+done
+if [ "$MS_READY" = "1" ]; then log "模型微服务已就绪（127.0.0.1:8000）"; else warn "模型微服务尚未就绪，请查看日志：journalctl -u zhi-model-service -n 50"; fi
+
 info "等待后端启动..."
 READY=0
 for i in $(seq 1 30); do
@@ -334,6 +374,8 @@ echo "  访问地址 : http://${SERVER_NAME}/"
 echo "  管理员   : admin / ${ADMIN_PASSWORD}（首次登录后请立即修改密码）"
 echo "  配置文件 : $ENV_FILE"
 echo "  应用目录 : $APP_DIR"
-echo "  常用命令 : systemctl restart zhi-platform"
+echo "  服务     : zhi-model-service（模型微服务:8000）+ zhi-platform（后端:8080）"
+echo "  常用命令 : systemctl restart zhi-platform zhi-model-service"
 echo "            journalctl -u zhi-platform -f"
+echo "            journalctl -u zhi-model-service -f"
 echo "======================================================"

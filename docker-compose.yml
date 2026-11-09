@@ -44,6 +44,27 @@ services:
       timeout: 10s
       retries: 30
 
+  model-service:
+    build: ./model-service
+    image: zhi-model-service:latest
+    container_name: zhi-model-service
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      # 云端 LLM（魔搭 ModelScope）
+      MODELSCOPE_API_KEY: ${MODELSCOPE_API_KEY:-}
+      LLM_BASE_URL: https://api-inference.modelscope.cn/v1
+      LLM_MODEL: MiniMax/MiniMax-M1-80k
+      # 云端 OCR（AI Studio PaddleOCR）
+      PADDLE_OCR_TOKEN: ${PADDLE_OCR_TOKEN:-}
+    ports:
+      - "127.0.0.1:8000:8000"     # 模型微服务（仅本机，供后端内部调用）
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
   backend:
     build: ./backend
     image: zhi-backend:latest
@@ -54,6 +75,8 @@ services:
         condition: service_healthy
       neo4j:
         condition: service_healthy
+      model-service:
+        condition: service_healthy
     environment:
       TZ: Asia/Shanghai
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/zhi_platform?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
@@ -63,8 +86,7 @@ services:
       SPRING_NEO4J_AUTHENTICATION_USERNAME: neo4j
       SPRING_NEO4J_AUTHENTICATION_PASSWORD: ${NEO4J_PASSWORD:-neo4j}
       JWT_SECRET: ${JWT_SECRET:-zhiplatform_docker_dev_secret_change_me_1234567890}
-      MODELSCOPE_API_KEY: ${MODELSCOPE_API_KEY:-}
-      PADDLE_OCR_TOKEN: ${PADDLE_OCR_TOKEN:-}
+      MODEL_SERVICE_URL: http://model-service:8000
     ports:
       - "127.0.0.1:8080:8080"      # 后端 API（仅本机，对外走 nginx）
 

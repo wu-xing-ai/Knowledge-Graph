@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS `subject` (
     `parent_id` BIGINT COMMENT '父学科ID',
     `color` VARCHAR(20) COMMENT '节点配色',
     `description` VARCHAR(500) COMMENT '描述',
-    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 习题表
@@ -104,7 +105,40 @@ CREATE TABLE IF NOT EXISTS `qa_template` (
     `category` VARCHAR(50) COMMENT '分类',
     `subject_ids` VARCHAR(200) COMMENT '关联学科ID(JSON)',
     `create_by` BIGINT COMMENT '创建者ID',
+    UNIQUE KEY `uk_question` (`question`),
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 收藏表（用户收藏知识点）
+CREATE TABLE IF NOT EXISTS `favorite` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` BIGINT NOT NULL,
+    `knowledge_id` BIGINT COMMENT '知识点ID',
+    `knowledge_name` VARCHAR(100) COMMENT '知识点名称快照',
+    `category` VARCHAR(50) COMMENT '分类',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_fav_user (`user_id`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 错题本
+CREATE TABLE IF NOT EXISTS `mistake` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` BIGINT NOT NULL,
+    `exercise_id` BIGINT NOT NULL,
+    `wrong_count` INT DEFAULT 1,
+    `last_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_user_exercise` (`user_id`, `exercise_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 学习资料（教师按班级分享）
+CREATE TABLE IF NOT EXISTS `material` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(200) NOT NULL,
+    `content` TEXT COMMENT '资料说明/链接文本',
+    `clazz_id` BIGINT NOT NULL,
+    `create_by` BIGINT COMMENT '创建教师ID',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_material_clazz (`clazz_id`, `create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 初始学科数据
@@ -130,3 +164,30 @@ INSERT IGNORE INTO `qa_template` (`question`, `category`, `create_by`) VALUES
 ('火箭发射中的推力与哪些物理公式相关？', '航天物理', 1),
 ('污水处理中的物理过滤与生物净化如何协同工作？', '环境交叉', 1);
 
+-- ============================================================
+-- 历史数据修复（幂等，可重复执行）：
+-- 早期版本 qa_template / subject 缺少唯一约束，install.sh 每次执行
+-- schema.sql 都会用 INSERT IGNORE 重复插入初始数据，导致大量重复。
+-- 此处按名称去重并补唯一索引；表已建好的情况 CREATE TABLE IF NOT EXISTS
+-- 不会生效，因此用 INFORMATION_SCHEMA 判断索引是否存在后再补。
+-- ============================================================
+
+-- 问句模板去重（保留每组重复 question 中 id 最小的一条）
+DELETE t1 FROM `qa_template` t1
+  INNER JOIN `qa_template` t2 ON t1.`question` = t2.`question` AND t1.`id` > t2.`id`;
+
+-- 补唯一索引（不存在才加）
+SET @idx := (SELECT COUNT(*) FROM information_schema.statistics
+             WHERE table_schema = DATABASE() AND table_name = 'qa_template' AND index_name = 'uk_question');
+SET @sql := IF(@idx = 0, 'ALTER TABLE `qa_template` ADD UNIQUE KEY `uk_question` (`question`)', 'SELECT 1');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- 学科去重
+DELETE t1 FROM `subject` t1
+  INNER JOIN `subject` t2 ON t1.`name` = t2.`name` AND t1.`id` > t2.`id`;
+
+-- 补唯一索引（不存在才加）
+SET @idx := (SELECT COUNT(*) FROM information_schema.statistics
+             WHERE table_schema = DATABASE() AND table_name = 'subject' AND index_name = 'uk_name');
+SET @sql := IF(@idx = 0, 'ALTER TABLE `subject` ADD UNIQUE KEY `uk_name` (`name`)', 'SELECT 1');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;

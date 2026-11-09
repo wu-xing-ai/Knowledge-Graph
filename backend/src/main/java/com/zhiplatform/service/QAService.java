@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 public class QAService {
     private final KnowledgeNodeRepository knowledgeRepo;
     private final QaTemplateRepository templateRepo;
-    private final ModelscopeLlmClient llmClient;
+    private final ModelServiceClient llmClient;
 
     private static final String RAG_SYSTEM_PROMPT =
             "你是「知联汇学」交叉学科知识图谱平台的智能问答助手，面向高中师生。\n" +
@@ -49,7 +49,7 @@ public class QAService {
 
     @Autowired
     public QAService(KnowledgeNodeRepository knowledgeRepo, QaTemplateRepository templateRepo,
-                     ModelscopeLlmClient llmClient) {
+                     ModelServiceClient llmClient) {
         this.knowledgeRepo = knowledgeRepo;
         this.templateRepo = templateRepo;
         this.llmClient = llmClient;
@@ -115,7 +115,7 @@ public class QAService {
     }
 
     /**
-     * GraphRAG 增强问答：先在图谱中检索相关知识点作为上下文，再调用魔搭 MiniMax 生成答案。
+     * GraphRAG 增强问答：先在图谱中检索相关知识点作为上下文，再调用模型微服务生成答案。
      */
     public QAResponse graphRag(QARequest request) {
         if (llmClient == null) {

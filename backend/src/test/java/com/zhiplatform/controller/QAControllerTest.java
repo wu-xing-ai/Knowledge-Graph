@@ -3,6 +3,8 @@ package com.zhiplatform.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zhiplatform.dto.QARequest;
 import com.zhiplatform.dto.QAResponse;
+import com.zhiplatform.entity.mysql.StudyRecord;
+import com.zhiplatform.service.ExerciseService;
 import com.zhiplatform.service.QAService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,9 +32,12 @@ class QAControllerTest {
     @Mock
     private QAService qaService;
 
+    @Mock
+    private ExerciseService exerciseService;
+
     @BeforeEach
     void setUp() {
-        QAController controller = new QAController(qaService);
+        QAController controller = new QAController(qaService, exerciseService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 
@@ -84,5 +89,21 @@ class QAControllerTest {
         mockMvc.perform(get("/api/qa/template/list"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    void getHistory_success() throws Exception {
+        StudyRecord record = new StudyRecord();
+        record.setUserId(1L);
+        record.setActionType("QA");
+        record.setTargetType("kbqa");
+        record.setExtra("问题");
+
+        when(exerciseService.getUserQaHistory(1L)).thenReturn(List.of(record));
+
+        mockMvc.perform(get("/api/qa/history").param("userId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data[0].extra").value("问题"));
     }
 }

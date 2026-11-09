@@ -92,6 +92,30 @@ export function gradeRecord(assignmentId, userId, score) {
   return request.put(`/teaching/manage/assignment/${assignmentId}/grade`, { userId, score })
 }
 
+// ==================== 学习资料（教师） ====================
+
+export function getMaterials(clazzId) {
+  return request.get('/teaching/manage/material/list', { params: { clazzId } })
+}
+
+export function addMaterial(data) {
+  return request.post('/teaching/manage/material', data)
+}
+
+export function updateMaterial(data) {
+  return request.put('/teaching/manage/material', data)
+}
+
+export function deleteMaterial(id) {
+  return request.delete(`/teaching/manage/material/${id}`)
+}
+
+// ==================== 学习资料（学生） ====================
+
+export function getMyMaterials(userId) {
+  return request.get('/teaching/material/my', { params: { userId } })
+}
+
 // ==================== 学生任务 ====================
 
 export function getMyTasks() {

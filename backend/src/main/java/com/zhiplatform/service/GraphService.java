@@ -56,6 +56,75 @@ public class GraphService {
         return convertToDTO(rawData);
     }
 
+    /**
+     * 多关键词关联图谱：先按关键词匹配知识点，再返回这些节点间的全部关系。
+     * 未命中任何关键词时返回空图；最多保留 40 个种子节点，避免大库下生成过大的结果。
+     */
+    public GraphDataDTO generateByKeywords(List<String> keywords, int limit) {
+        List<String> terms = keywords == null ? List.of() : keywords.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(keyword -> !keyword.isEmpty())
+                .distinct()
+                .toList();
+        if (terms.isEmpty()) {
+            GraphDataDTO empty = new GraphDataDTO();
+            empty.setNodes(new ArrayList<>());
+            empty.setEdges(new ArrayList<>());
+            return empty;
+        }
+        int maxNodes = Math.max(1, Math.min(limit <= 0 ? 20 : limit, 40));
+        List<Map<String, Object>> seedRows = executeGraphQuery(
+                "MATCH (n:Knowledge) WHERE ANY(term IN $keywords WHERE n.name CONTAINS term " +
+                "OR n.description CONTAINS term OR n.tags CONTAINS term) " +
+                "RETURN n LIMIT $limit",
+                Map.of("keywords", terms, "limit", maxNodes));
+        List<Long> seedIds = seedRows.stream()
+                .map(row -> extractNodeId(row.get("n")))
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (seedIds.isEmpty()) {
+            GraphDataDTO empty = new GraphDataDTO();
+            empty.setNodes(new ArrayList<>());
+            empty.setEdges(new ArrayList<>());
+            return empty;
+        }
+        List<Map<String, Object>> relationRows = executeGraphQuery(
+                "MATCH (a:Knowledge)-[r]->(b:Knowledge) WHERE id(a) IN $ids AND id(b) IN $ids " +
+                "RETURN a, coalesce(r.relationType, type(r)) AS relationType, b",
+                Map.of("ids", seedIds));
+        return convertToDTO(relationRows);
+    }
+
+    /**
+     * 真·知识溯源：从指定知识点出发，沿「前置知识 / 基于原理 / 共通原理」关系向上游
+     * 遍历 depth 跳，返回与 /api/graph/data 相同结构的子图。未命中任何路径时，
+     * 至少返回起点节点，保证前端有可渲染内容。
+     */
+    public GraphDataDTO traceKnowledge(Long nodeId, int depth) {
+        int hops = Math.max(1, Math.min(depth <= 0 ? 3 : depth, 6));
+        List<String> relationTypes = List.of("前置知识", "基于原理", "共通原理");
+        List<Map<String, Object>> rawData = executeGraphQuery(
+                "MATCH path = (start:Knowledge)-[r*1.." + hops + "]->(up:Knowledge) " +
+                "WHERE id(start) = $nodeId " +
+                "AND all(rel IN r WHERE coalesce(rel.relationType, type(rel)) IN $relationTypes) " +
+                "UNWIND r AS edge " +
+                "WITH DISTINCT startNode(edge) AS n, coalesce(edge.relationType, type(edge)) AS relationType, " +
+                "endNode(edge) AS m " +
+                "RETURN n, relationType, m",
+                Map.of("nodeId", nodeId, "relationTypes", relationTypes));
+        GraphDataDTO dto = convertToDTO(rawData);
+        KnowledgeNode start = knowledgeRepo.findById(nodeId).orElse(null);
+        if (start != null) {
+            boolean hasStart = dto.getNodes().stream().anyMatch(n -> n.getId().equals(nodeId));
+            if (!hasStart) {
+                dto.getNodes().add(0, toNodeDTO(start));
+            }
+        }
+        return dto;
+    }
+
     // ==================== 交叉关系管理 ====================
 
     /**
@@ -167,6 +236,22 @@ public class GraphService {
         return null;
     }
 
+    private GraphDataDTO.NodeDTO toNodeDTO(KnowledgeNode kn) {
+        GraphDataDTO.NodeDTO dto = new GraphDataDTO.NodeDTO();
+        dto.setId(kn.getId());
+        dto.setName(kn.getName());
+        dto.setType(kn.getType());
+        dto.setSubject(kn.getSubject());
+        dto.setSubjectId(kn.getSubjectId());
+        dto.setDifficulty(kn.getDifficulty());
+        dto.setDescription(kn.getDescription());
+        dto.setTags(kn.getTags());
+        dto.setIsCross(kn.getIsCross());
+        dto.setColor(getNodeColor(kn));
+        dto.setSize(kn.getIsCross() != null && kn.getIsCross() ? 40 : 30);
+        return dto;
+    }
+
     private GraphDataDTO convertToDTO(List<Map<String, Object>> rawData) {
         Set<Long> nodeIds = new LinkedHashSet<>();
         List<GraphDataDTO.EdgeDTO> edges = new ArrayList<>();
@@ -186,19 +271,7 @@ public class GraphService {
         for (Long nid : nodeIds) {
             KnowledgeNode kn = knowledgeRepo.findById(nid).orElse(null);
             if (kn == null) continue;
-            GraphDataDTO.NodeDTO dto = new GraphDataDTO.NodeDTO();
-            dto.setId(kn.getId());
-            dto.setName(kn.getName());
-            dto.setType(kn.getType());
-            dto.setSubject(kn.getSubject());
-            dto.setSubjectId(kn.getSubjectId());
-            dto.setDifficulty(kn.getDifficulty());
-            dto.setDescription(kn.getDescription());
-            dto.setTags(kn.getTags());
-            dto.setIsCross(kn.getIsCross());
-            dto.setColor(getNodeColor(kn));
-            dto.setSize(kn.getIsCross() != null && kn.getIsCross() ? 40 : 30);
-            nodes.add(dto);
+            nodes.add(toNodeDTO(kn));
         }
         GraphDataDTO result = new GraphDataDTO();
         result.setNodes(nodes);

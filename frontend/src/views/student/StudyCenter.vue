@@ -33,6 +33,13 @@
               <el-rate v-model="row.difficulty" disabled :max="5" />
             </template>
           </el-table-column>
+          <el-table-column prop="wrongCount" label="错误次数" width="90" />
+          <el-table-column prop="lastTime" label="最近错误时间" width="180" />
+          <el-table-column label="操作" width="100">
+            <template #default="{ row }">
+              <el-button type="success" text @click="masterMistake(row.id)">移除</el-button>
+            </template>
+          </el-table-column>
         </el-table>
         <el-empty v-if="!mistakes.length" description="暂无错题" />
       </el-tab-pane>
@@ -50,7 +57,12 @@
 
       <!-- 教师分享 -->
       <el-tab-pane label="学习资料" name="shared">
-        <el-empty description="暂无教师分享的学习资料" />
+        <el-table :data="materials" stripe>
+          <el-table-column prop="title" label="资料标题" min-width="180" />
+          <el-table-column prop="content" label="说明 / 链接" show-overflow-tooltip />
+          <el-table-column prop="createTime" label="发布时间" width="180" />
+        </el-table>
+        <el-empty v-if="!materials.length" description="暂无教师分享的学习资料" />
       </el-tab-pane>
     </el-tabs>
   </div>
@@ -58,20 +70,34 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getRecords, getNotes } from '@/api/exercise'
+import { getRecords, getNotes, getMistakes, removeMistake } from '@/api/exercise'
+import { getMyMaterials } from '@/api/teaching'
 import { useUserStore } from '@/store/user'
+import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
 const activeTab = ref('records')
 const records = ref([])
 const mistakes = ref([])
 const notes = ref([])
+const materials = ref([])
 
 const actionMap = {
   'PRACTICE': '刷题练习',
   'FAVORITE': '收藏知识点',
   'QA': '智能问答',
   'VIEW': '浏览知识图谱'
+}
+
+async function loadMistakes(userId) {
+  const res = await getMistakes(userId)
+  if (res.code === 200) mistakes.value = res.data || []
+}
+
+async function masterMistake(id) {
+  await removeMistake(id)
+  ElMessage.success('已标记掌握并移除')
+  loadMistakes(userStore.user?.userId)
 }
 
 onMounted(async () => {
@@ -83,5 +109,10 @@ onMounted(async () => {
 
   const noteRes = await getNotes(userId)
   if (noteRes.code === 200) notes.value = noteRes.data || []
+
+  loadMistakes(userId)
+
+  const materialRes = await getMyMaterials(userId)
+  if (materialRes.code === 200) materials.value = materialRes.data || []
 })
 </script>

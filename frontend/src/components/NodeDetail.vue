@@ -27,6 +27,7 @@
     </template>
     <template #footer>
       <el-button @click="visible = false">关闭</el-button>
+      <el-button type="warning" @click="$emit('collect', node)">收藏</el-button>
       <el-button type="primary" @click="$emit('expand', node)">展开关联</el-button>
     </template>
   </el-dialog>
@@ -39,7 +40,7 @@ const props = defineProps({
   modelValue: Boolean,
   node: Object
 })
-const emit = defineEmits(['update:modelValue', 'expand'])
+const emit = defineEmits(['update:modelValue', 'expand', 'collect'])
 
 const visible = computed({
   get: () => props.modelValue,

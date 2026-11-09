@@ -12,7 +12,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
@@ -108,6 +110,23 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.username").value("admin"))
                 .andExpect(jsonPath("$.data.password").isEmpty());
+    }
+
+    @Test
+    void batchImport_success() throws Exception {
+        when(userService.batchImportStudents(any(MultipartFile.class)))
+                .thenReturn(Map.of("successCount", 2, "failCount", 0, "failures", List.of(), "notes", List.of()));
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "students.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                new byte[]{1, 2, 3});
+
+        mockMvc.perform(multipart("/api/user/batch-import").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.successCount").value(2));
+
+        verify(userService).batchImportStudents(any(MultipartFile.class));
     }
 
     @Test

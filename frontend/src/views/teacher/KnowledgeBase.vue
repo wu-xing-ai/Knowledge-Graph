@@ -53,14 +53,16 @@
             </template>
           </el-table-column>
           <el-table-column prop="description" label="描述" show-overflow-tooltip />
-          <el-table-column label="操作" width="150" fixed="right">
+          <el-table-column label="操作" width="130" fixed="right">
             <template #default="{ row }">
-              <el-button type="primary" text @click="openDialog(row)">编辑</el-button>
-              <el-popconfirm title="确定删除？" @confirm="handleDelete(row.id)">
-                <template #reference>
-                  <el-button type="danger" text>删除</el-button>
-                </template>
-              </el-popconfirm>
+              <div class="op-cell">
+                <el-button type="primary" text @click="openDialog(row)">编辑</el-button>
+                <el-popconfirm title="确定删除？" @confirm="handleDelete(row.id)">
+                  <template #reference>
+                    <el-button type="danger" text>删除</el-button>
+                  </template>
+                </el-popconfirm>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -202,14 +204,16 @@
             <el-table-column prop="entityCount" label="知识点" width="90" />
             <el-table-column prop="relationCount" label="关系" width="80" />
             <el-table-column prop="createTime" label="抽取时间" width="180" />
-            <el-table-column label="操作" width="150" fixed="right">
+            <el-table-column label="操作" width="170" fixed="right">
               <template #default="{ row }">
-                <el-button type="primary" text @click="viewDraft(row)">查看并导入</el-button>
-                <el-popconfirm title="删除该草稿？" @confirm="deleteDraft(row)">
-                  <template #reference>
-                    <el-button type="danger" text>删除</el-button>
-                  </template>
-                </el-popconfirm>
+                <div class="op-cell">
+                  <el-button type="primary" text @click="viewDraft(row)">查看并导入</el-button>
+                  <el-popconfirm title="删除该草稿？" @confirm="deleteDraft(row)">
+                    <template #reference>
+                      <el-button type="danger" text>删除</el-button>
+                    </template>
+                  </el-popconfirm>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -313,6 +317,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { queryKnowledge, addKnowledge, updateKnowledge, deleteKnowledge, getSubjects, batchImport, downloadTemplate, documentExtract, getExtractStatus, documentImport, getDocumentImports, deleteDocumentImport, getDocumentDrafts, getDocumentDraft, deleteDocumentDraft } from '@/api/knowledge'
 import { getRelations, addRelation, deleteRelation } from '@/api/graph'
+import { getSubjectColor } from '@/utils/subjectColors'
 import { ElMessage } from 'element-plus'
 
 const subjects = ref([])
@@ -333,14 +338,6 @@ const relationTypeOptions = [
   '跨学科关联', '学科衔接', '共通原理', '交叉应用', '基于原理', '应用',
   '关联', '协同应用', '对立过程', '化学反应', '能量转换', '涉及', '推动', '前置知识'
 ]
-
-const subjectColorMap = {
-  '高中物理': '#2563EB', '高中化学': '#D97706', '高中生物': '#16A34A',
-  '航天拓展': '#7C3AED', '环境科普': '#0D9488'
-}
-function getSubjectColor(name) {
-  return subjectColorMap[name] || '#8F959E'
-}
 
 async function fetchList() {
   const params = {}
@@ -636,6 +633,19 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
+/* 操作列：固定为横向一排，避免表格出现纵向滚动条挤压列宽时按钮换行堆叠 */
+.op-cell {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 4px;
+
+  .el-button {
+    margin-left: 0;
+    padding: 4px 6px;
+  }
+}
+
 .doc-progress {
   position: relative;
   width: 100%;
@@ -647,7 +657,7 @@ onMounted(async () => {
   align-items: center;
 }
 
-/* 背景装饰圆球 */
+/* 背景装饰圆球（品牌蓝 → 青色系，与全局氛围底一致） */
 .shape {
   position: absolute;
   border-radius: 50%;
@@ -655,19 +665,19 @@ onMounted(async () => {
 }
 .shape-1 {
   width: 140px; height: 140px;
-  background: linear-gradient(135deg, #d8b4fe, #818cf8);
+  background: linear-gradient(135deg, #8BC1FF, #1783FF);
   top: -40px; right: 50px;
   filter: blur(2px);
 }
 .shape-2 {
   width: 220px; height: 220px;
-  background: linear-gradient(135deg, #bfdbfe, #fbcfe8);
+  background: linear-gradient(135deg, #CFE5FF, #8FE3DB);
   bottom: -70px; left: -20px;
   filter: blur(4px);
 }
 .shape-3 {
   width: 70px; height: 70px;
-  background: linear-gradient(135deg, #7dd3fc, #38bdf8);
+  background: linear-gradient(135deg, #7dd3fc, #39B5A8);
   bottom: -110px; right: 140px;
   filter: blur(1px);
 }
@@ -692,7 +702,7 @@ onMounted(async () => {
   font-size: 26px;
   font-weight: 800;
   margin-bottom: 20px;
-  background: linear-gradient(90deg, #3b5bdb, #2563eb);
+  background: linear-gradient(90deg, #1783FF, #0E6FE0);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: 0.5px;
@@ -711,7 +721,7 @@ onMounted(async () => {
 .progress-bar {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, #2563eb, #22d3ee);
+  background: linear-gradient(90deg, #1783FF, #39B5A8);
   border-radius: 20px;
   transition: width 0.6s ease;
   position: relative;

@@ -4,6 +4,8 @@ import com.zhiplatform.common.Result;
 import com.zhiplatform.dto.QARequest;
 import com.zhiplatform.dto.QAResponse;
 import com.zhiplatform.entity.mysql.QaTemplate;
+import com.zhiplatform.entity.mysql.StudyRecord;
+import com.zhiplatform.service.ExerciseService;
 import com.zhiplatform.service.QAService;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -18,9 +20,11 @@ import java.util.concurrent.CompletableFuture;
 public class QAController {
 
     private final QAService qaService;
+    private final ExerciseService exerciseService;
 
-    public QAController(QAService qaService) {
+    public QAController(QAService qaService, ExerciseService exerciseService) {
         this.qaService = qaService;
+        this.exerciseService = exerciseService;
     }
 
     @PostMapping("/kbqa")
@@ -87,6 +91,15 @@ public class QAController {
     @GetMapping("/template/list")
     public Result<List<QaTemplate>> getTemplates() {
         return Result.success(qaService.getTemplates());
+    }
+
+    /**
+     * 问答历史：该用户 actionType='QA' 的记录按时间倒序
+     * （extra 为问题文本、targetType 为问答模式）。
+     */
+    @GetMapping("/history")
+    public Result<List<StudyRecord>> getHistory(@RequestParam Long userId) {
+        return Result.success(exerciseService.getUserQaHistory(userId));
     }
 
     @PostMapping("/template/add")

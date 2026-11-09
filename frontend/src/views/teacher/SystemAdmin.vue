@@ -15,6 +15,9 @@
             </el-radio-group>
             <span style="color:var(--text-secondary);font-size:13px;">共 {{ users.length }} 个账号</span>
           </div>
+          <el-upload :show-file-list="false" :before-upload="handleBatchImport" accept=".xlsx,.xls">
+            <el-button><el-icon><Upload /></el-icon>批量导入学生</el-button>
+          </el-upload>
           <el-button type="primary" @click="openAddDialog"><el-icon><Plus /></el-icon>新增账号</el-button>
         </div>
 
@@ -130,6 +133,7 @@ import {
   getAdminUsers, adminAddUser, adminResetPassword, adminUpdateStatus,
   adminUpdateRole, adminDeleteUser, getAdminLogs
 } from '@/api/admin'
+import { batchImportUsers } from '@/api/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const activeTab = ref('users')
@@ -211,6 +215,30 @@ async function handleDelete(row) {
 
 function roleLabel(role) {
   return role === 'ADMIN' ? '管理员' : role === 'TEACHER' ? '教师' : '学生'
+}
+
+// 批量导入学生账号：上传 Excel（用户名/姓名/初始密码/班级名）
+async function handleBatchImport(file) {
+  try {
+    const res = await batchImportUsers(file)
+    if (res.code === 200) {
+      const data = res.data || {}
+      const lines = [`成功导入 ${data.successCount ?? 0} 个学生账号`, `失败 ${data.failCount ?? 0} 条`]
+      if (Array.isArray(data.failures) && data.failures.length) {
+        lines.push('失败明细：' + data.failures.map(f => `${f.username || ''}(第${f.row}行)：${f.reason}`).join('；'))
+      }
+      if (Array.isArray(data.notes) && data.notes.length) {
+        lines.push('备注：' + data.notes.map(n => n.reason).join('；'))
+      }
+      await ElMessageBox.alert(lines.join('\n'), '批量导入结果')
+      fetchUsers()
+    } else {
+      ElMessage.error(res.message || '导入失败')
+    }
+  } catch (e) {
+    ElMessage.error('导入失败')
+  }
+  return false
 }
 
 function openAddDialog() {

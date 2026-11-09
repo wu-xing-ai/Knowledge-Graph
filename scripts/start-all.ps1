@@ -28,28 +28,34 @@ if (-not (Test-Path $neoHome)) {
     exit 1
 }
 
-$neoJob = Start-Job -ScriptBlock {
-    param($javaHome, $neoHome)
-    $env:JAVA_HOME = $javaHome
-    Set-Location $neoHome
-    & "bin\neo4j.bat" console
-} -ArgumentList $JAVA11, $neoHome
-
-Write-Host "  Neo4j 启动中 (Job ID: $($neoJob.Id))..." -ForegroundColor Gray
-
-# 等待 Neo4j 就绪
-$maxWait = 60
-$waited = 0
-do {
-    Start-Sleep -Seconds 2
-    $waited += 2
-    $ready = netstat -ano | Select-String ":7687" | Select-String "LISTENING"
-} while (-not $ready -and $waited -lt $maxWait)
-
-if ($ready) {
-    Write-Host "  [OK] Neo4j 已就绪 (bolt://localhost:7687)" -ForegroundColor Green
+$neoJob = $null
+$neoRunning = netstat -ano | Select-String ":7687" | Select-String "LISTENING"
+if ($neoRunning) {
+    Write-Host "  [OK] Neo4j 已在运行，跳过启动 (bolt://localhost:7687)" -ForegroundColor Green
 } else {
-    Write-Host "  [警告] Neo4j 可能尚未就绪，继续启动后端..." -ForegroundColor Yellow
+    $neoJob = Start-Job -ScriptBlock {
+        param($javaHome, $neoHome)
+        $env:JAVA_HOME = $javaHome
+        Set-Location $neoHome
+        & "bin\neo4j.bat" console
+    } -ArgumentList $JAVA11, $neoHome
+
+    Write-Host "  Neo4j 启动中 (Job ID: $($neoJob.Id))..." -ForegroundColor Gray
+
+    # 等待 Neo4j 就绪
+    $maxWait = 60
+    $waited = 0
+    do {
+        Start-Sleep -Seconds 2
+        $waited += 2
+        $ready = netstat -ano | Select-String ":7687" | Select-String "LISTENING"
+    } while (-not $ready -and $waited -lt $maxWait)
+
+    if ($ready) {
+        Write-Host "  [OK] Neo4j 已就绪 (bolt://localhost:7687)" -ForegroundColor Green
+    } else {
+        Write-Host "  [警告] Neo4j 可能尚未就绪，继续启动后端..." -ForegroundColor Yellow
+    }
 }
 
 # 2. 启动后端
@@ -69,12 +75,14 @@ if (-not $mvn) {
     exit 1
 }
 
-# 若旧后端仍在运行，jar 文件会被占用导致 mvn clean 失败，先停止旧后端
-$existingBackend = netstat -ano | Select-String ":8080" | Select-String "LISTENING" | Select-Object -First 1
-if ($existingBackend) {
-    $oldPid = ($existingBackend -split '\s+')[-1]
-    Write-Host "  检测到旧后端 (PID $oldPid) 正在运行，先停止以解锁 jar..." -ForegroundColor Yellow
-    Stop-Process -Id $oldPid -Force -ErrorAction SilentlyContinue
+# 若旧后端仍在运行，jar 文件会被占用导致 mvn clean 失败，先停止所有本项目后端进程
+$backendProcesses = Get-CimInstance Win32_Process -Filter "Name='java.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -match 'zhi-platform-1\.0\.0\.jar' }
+foreach ($bp in $backendProcesses) {
+    Write-Host "  检测到旧后端 (PID $($bp.ProcessId)) 正在运行，先停止以解锁 jar..." -ForegroundColor Yellow
+    Stop-Process -Id $bp.ProcessId -Force -ErrorAction SilentlyContinue
+}
+if ($backendProcesses) {
     Start-Sleep -Seconds 2
 }
 Write-Host "  编译并打包后端..." -ForegroundColor Gray
@@ -114,20 +122,25 @@ if ($ready) {
 Write-Host "`n[3/3] 启动前端开发服务器..." -ForegroundColor Cyan
 $frontendDir = Join-Path $PSScriptRoot "..\frontend"
 
-if (-not (Test-Path (Join-Path $frontendDir "node_modules"))) {
-    Write-Host "  首次运行，安装前端依赖..." -ForegroundColor Gray
-    Set-Location $frontendDir
-    npm install
+$frontendRunning = netstat -ano | Select-String ":3000" | Select-String "LISTENING"
+if ($frontendRunning) {
+    Write-Host "  [OK] 前端开发服务器已在运行，跳过启动 (http://localhost:3000)" -ForegroundColor Green
+} else {
+    if (-not (Test-Path (Join-Path $frontendDir "node_modules"))) {
+        Write-Host "  首次运行，安装前端依赖..." -ForegroundColor Gray
+        Set-Location $frontendDir
+        npm install
+    }
+
+    $frontendJob = Start-Job -ScriptBlock {
+        param($frontendDir)
+        Set-Location $frontendDir
+        npm run dev
+    } -ArgumentList $frontendDir
+
+    Write-Host "  前端启动中 (Job ID: $($frontendJob.Id))..." -ForegroundColor Gray
+    Start-Sleep -Seconds 3
 }
-
-$frontendJob = Start-Job -ScriptBlock {
-    param($frontendDir)
-    Set-Location $frontendDir
-    npm run dev
-} -ArgumentList $frontendDir
-
-Write-Host "  前端启动中 (Job ID: $($frontendJob.Id))..." -ForegroundColor Gray
-Start-Sleep -Seconds 3
 
 Write-Host "`n========================================" -ForegroundColor Yellow
 Write-Host "  服务状态:" -ForegroundColor Yellow

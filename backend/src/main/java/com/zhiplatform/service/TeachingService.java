@@ -36,12 +36,13 @@ public class TeachingService {
     private final KnowledgeNodeRepository knowledgeRepo;
     private final ExerciseRepository exerciseRepo;
     private final TeachingGraphService graphService;
+    private final MaterialRepository materialRepo;
 
     public TeachingService(ClazzRepository clazzRepo, StudyGroupRepository groupRepo,
                            GroupMemberRepository memberRepo, AssignmentRepository assignmentRepo,
                            AssignmentRecordRepository recordRepo, UserRepository userRepo,
                            KnowledgeNodeRepository knowledgeRepo, ExerciseRepository exerciseRepo,
-                           TeachingGraphService graphService) {
+                           TeachingGraphService graphService, MaterialRepository materialRepo) {
         this.clazzRepo = clazzRepo;
         this.groupRepo = groupRepo;
         this.memberRepo = memberRepo;
@@ -51,6 +52,7 @@ public class TeachingService {
         this.knowledgeRepo = knowledgeRepo;
         this.exerciseRepo = exerciseRepo;
         this.graphService = graphService;
+        this.materialRepo = materialRepo;
     }
 
     // ==================== 班级 ====================
@@ -475,6 +477,54 @@ public class TeachingService {
             return memberRepo.findByGroupIdAndUserId(a.getTargetId(), userId).isPresent();
         }
         return false;
+    }
+
+    // ==================== 学习资料 ====================
+
+    /** 教师发布资料到班级 */
+    public Material addMaterial(Material material, Long teacherId) {
+        if (material.getTitle() == null || material.getTitle().isBlank()) {
+            throw new IllegalArgumentException("资料标题不能为空");
+        }
+        if (material.getClazzId() == null) {
+            throw new IllegalArgumentException("请选择所属班级");
+        }
+        material.setId(null);
+        material.setCreateBy(teacherId);
+        material.setCreateTime(LocalDateTime.now());
+        return materialRepo.save(material);
+    }
+
+    public Material updateMaterial(Material material) {
+        Material exist = materialRepo.findById(material.getId())
+                .orElseThrow(() -> new IllegalArgumentException("资料不存在"));
+        if (material.getTitle() != null && !material.getTitle().isBlank()) {
+            exist.setTitle(material.getTitle());
+        }
+        exist.setContent(material.getContent());
+        return materialRepo.save(exist);
+    }
+
+    public void deleteMaterial(Long id) {
+        materialRepo.deleteById(id);
+    }
+
+    /** 教师端：按班级列出资料 */
+    public List<Material> listByClazz(Long clazzId) {
+        if (clazzId == null) return Collections.emptyList();
+        return materialRepo.findByClazzIdOrderByCreateTimeDesc(clazzId);
+    }
+
+    /** 学生端：列出自己所在班级的资料 */
+    public List<Material> listForStudent(Long userId) {
+        User student = userRepo.findById(userId).orElse(null);
+        if (student == null || student.getClazzId() == null) {
+            return Collections.emptyList();
+        }
+        List<Material> list = materialRepo.findByClazzIdIn(List.of(student.getClazzId()));
+        list.sort(Comparator.comparing(Material::getCreateTime,
+                Comparator.nullsLast(Comparator.reverseOrder())));
+        return list;
     }
 
     // ==================== 组装工具 ====================
